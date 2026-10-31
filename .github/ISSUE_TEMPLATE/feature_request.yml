@@ -1,0 +1,17 @@
+name: Feature request
+description: Propose a focused improvement
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Problem or contributor need
+      description: What is difficult or missing today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested approach
+      description: What would you change, and what alternatives should we consider?
+    validations:
+      required: false
