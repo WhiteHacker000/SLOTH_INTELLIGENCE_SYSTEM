@@ -1,33 +1,22 @@
-# Database schema plan
+# Database schema
 
-## Current state
+Models live in `backend/app/models/entities.py`.
 
-SQLAlchemy models describe the initial PostgreSQL entities in `backend/app/models/entities.py`. They are not yet wired to API workflows, and the application does not create tables automatically. The basic test suite inspects contracts without connecting to a database.
-
-| Entity | Purpose | Important relationships/data |
+| Table | Purpose | Key columns |
 | --- | --- | --- |
-| `repositories` | Imported repository identity and sync cursor | Full name, GitHub URL, default branch, last sync time |
-| `discussions` | Source issue, pull request, comment, or review discussion | Repository, GitHub ID/type, timestamps, title/body, canonical source URL |
-| `decisions` | Extracted technical decision | Repository, context, rationale, alternatives, trade-offs, status |
-| `evidence_references` | Link a decision to supporting source material | Decision, discussion, excerpt, source URL |
-| `discussion_chunks` | Retrieval-ready text and embedding | Discussion, chunk order/text, 384-dimensional vector |
+| `repositories` | A connected GitHub repository and its sync state | `full_name` (unique), `github_id`, `last_synced_at`, `last_sync_error` |
+| `discussions` | An issue or pull request | `kind`, `number` (unique per repository), `state`, `author`, `labels`, `source_url`, `merged_at` |
+| `comments` | Issue comments, PR review comments, and PR reviews | `kind`, `github_id` (unique per kind), `author`, `source_url` |
+| `document_chunks` | Searchable text with its embedding | `discussion_id`, `comment_id` (NULL for the issue/PR body), `ordinal`, `source_url`, `embedding vector(384)` |
+| `decisions` | An extracted technical decision | `title`, `decision`, `rationale`, `alternatives`, `trade_offs`, `status`, `confidence`, `extraction_model` |
+| `decision_evidence` | Links a decision to the discussion or comment that supports it | `decision_id`, `discussion_id`, `comment_id`, `excerpt`, `source_url` |
 
-Decision status is constrained to proposed, accepted, rejected, or unresolved. A merged pull request is not sufficient evidence to mark a decision accepted.
+## Notes
 
-## PostgreSQL and pgvector
-
-Configure `DATABASE_URL` in the root `.env`. The example uses Psycopg 3 and a local PostgreSQL database. The database must have the pgvector extension available before embedding persistence is used. No database server is started by this repository.
-
-The embedding column uses 384 dimensions, matching the planned `BAAI/bge-small-en-v1.5` model. Keep the model identifier and dimensionality aligned if the embedding model changes; existing vectors would need re-embedding.
-
-## Migrations
-
-Alembic is not included yet: there is no deployed schema to migrate, and adding a migration history now would add setup without a concrete schema lifecycle. Introduce Alembic before sharing a mutable schema or deploying the database, and use migrations to enable the pgvector extension and create/update tables. Do not rely on `metadata.create_all` in production.
-
-## Future data integrity work
-
-- Make GitHub source identity unique within its repository and source type.
-- Preserve immutable source identifiers and canonical URLs.
-- Make synchronization idempotent and record a cursor or timestamp per repository.
-- Keep evidence references navigable back to original GitHub material.
-- Add indexes based on measured query patterns before optimizing.
+- **Idempotent imports.** Discussions are unique on `(repository_id, number)` and comments on `(kind, github_id)`, because GitHub uses a separate id sequence per comment kind. Re-importing updates rows instead of duplicating them.
+- **Sync checkpoint.** `repositories.last_synced_at` is the cursor for incremental sync (GitHub's `since` parameter).
+- **Embeddings** are stored on `document_chunks` rather than in a separate table, since each chunk has exactly one embedding. The 384 dimensions match `BAAI/bge-small-en-v1.5`. Changing the model means re-embedding.
+- **Decision status** is one of proposed, accepted, rejected, unresolved. A merged PR alone is not enough to mark a decision accepted.
+- **`confidence`** is the model's own score. It is not a calibrated probability.
+- A vector index (HNSW) will be added with the embedding pipeline, once there is data to tune it on.
+- PostgreSQL 15+ is required (the chunk unique constraint uses `NULLS NOT DISTINCT`).
