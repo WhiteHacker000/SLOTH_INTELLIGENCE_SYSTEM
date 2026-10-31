@@ -90,11 +90,15 @@ uvicorn app.main:app --reload
 
 The API health check is at `http://localhost:8000/api/v1/health`. FastAPI provides interactive OpenAPI documentation at `http://localhost:8000/docs` and the schema at `http://localhost:8000/openapi.json`.
 
-Run backend tests from `backend/`:
+Run backend lint and tests from `backend/`:
 
 ```bash
+ruff check .
+ruff format --check .
 pytest
 ```
+
+`LOG_LEVEL` in `.env` controls application log verbosity.
 
 ### Frontend
 
@@ -104,12 +108,15 @@ npm ci
 npm run dev
 ```
 
-Run frontend tests and a production build from `frontend/`:
+Run frontend lint, tests, and a production build from `frontend/`:
 
 ```bash
+npm run lint
 npm test
 npm run build
 ```
+
+During development, Vite proxies `/api` requests to the backend at `http://localhost:8000`, so the frontend needs no CORS configuration.
 
 The initial screen is intentionally a foundation/status page; it does not yet call the backend or claim that repository import, decisions, or question answering work.
 
