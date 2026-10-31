@@ -128,3 +128,14 @@ def test_client_repr_does_not_expose_token() -> None:
 
     assert "secret" not in repr(client)
     assert "secret" not in repr(vars(client))
+
+
+def test_follows_redirect_for_moved_repository() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/repos/old/name":
+            return httpx.Response(
+                301, headers={"location": f"{BASE_URL}/repos/new/name"}
+            )
+        return httpx.Response(200, json={"full_name": "new/name"})
+
+    assert make_client(handler).get_json("/repos/old/name") == {"full_name": "new/name"}

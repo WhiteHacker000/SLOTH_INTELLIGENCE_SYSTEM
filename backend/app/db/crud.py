@@ -33,11 +33,18 @@ def create_repository(session: Session, **values: Any) -> Repository:
 
 
 def record_sync_result(
-    session: Session, repository: Repository, error: str | None = None
+    session: Session,
+    repository: Repository,
+    error: str | None = None,
+    started_at: datetime | None = None,
 ) -> None:
-    """Advance the sync checkpoint only when the sync succeeded."""
+    """Advance the sync checkpoint only when the sync succeeded.
+
+    Pass the time the sync started so items updated during the sync are
+    picked up next time.
+    """
     if error is None:
-        repository.last_synced_at = datetime.now(UTC)
+        repository.last_synced_at = started_at or datetime.now(UTC)
     repository.last_sync_error = error
     session.flush()
 

@@ -1,7 +1,7 @@
 import math
 from dataclasses import dataclass
 
-from app.ingestion.github_client import PAGE_SIZE, GitHubReader
+from app.ingestion.github_client import PAGE_SIZE, GitHubError, GitHubReader
 
 # Rough guess used only for the estimate.
 AVERAGE_COMMENTS_PER_ITEM = 3
@@ -22,6 +22,8 @@ def estimate_import(github: GitHubReader, full_name: str) -> ImportEstimate:
         f"/repos/{full_name}/issues",
         {"state": "all", "sort": "created", "direction": "desc", "per_page": 1},
     )
+    if not isinstance(newest, list):
+        raise GitHubError("Unexpected response while estimating the import")
     items = newest[0]["number"] if newest else 0
     comments = items * AVERAGE_COMMENTS_PER_ITEM
     # Issue and PR pages, two comment endpoints, and one reviews call per item
