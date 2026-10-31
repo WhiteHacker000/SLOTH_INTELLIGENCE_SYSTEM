@@ -33,3 +33,12 @@ export interface StartedJob {
   repository_id: string;
   message: string;
 }
+
+export interface Decision {
+  id: string;
+  title: string;
+  decision: string;
+  rationale: string[];
+  alternatives: { approach: string; rejection_reason: string }[];
+  evidence: { excerpt: string; source_url: string }[];
+}
