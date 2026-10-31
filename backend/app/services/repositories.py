@@ -7,10 +7,13 @@ from sqlalchemy.orm import Session
 
 from app.db import crud
 from app.db.session import SessionLocal
+from app.embeddings.embedder import EmbeddingsUnavailable, get_embedder
+from app.embeddings.pipeline import embed_pending_chunks
 from app.ingestion.estimate import estimate_import
 from app.ingestion.github_client import GitHubReader, create_github_client
 from app.ingestion.importer import import_repository
 from app.models import Comment, Discussion, Repository, SyncStatus
+from app.processing.chunks import chunk_repository
 from app.schemas.repositories import (
     ImportEstimateRead,
     RepositoryDetail,
@@ -81,3 +84,27 @@ def run_sync(repository_id: UUID, token: str | None) -> None:
             session.commit()
             return
         logger.info("Sync of %s finished: %s", repository.full_name, result)
+        build_search_index(session, repository)
+
+
+def build_search_index(session: Session, repository: Repository) -> None:
+    """Chunk and embed imported text.
+
+    Search is optional for now, so a failure here is logged and does not undo
+    the import.
+    """
+    try:
+        stats = chunk_repository(session, repository.id)
+        session.commit()
+        embedded = embed_pending_chunks(
+            session, get_embedder(), repository.id, session.commit
+        )
+        session.commit()
+    except EmbeddingsUnavailable as error:
+        logger.warning("Skipping embeddings for %s: %s", repository.full_name, error)
+        return
+    except Exception:
+        logger.exception("Search index for %s failed", repository.full_name)
+        session.rollback()
+        return
+    logger.info("Indexed %s: %s, %d embedded", repository.full_name, stats, embedded)
