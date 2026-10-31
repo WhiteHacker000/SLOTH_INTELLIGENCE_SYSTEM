@@ -35,3 +35,19 @@ alembic check             # fails if models and migrations have drifted
 ```
 
 `DATABASE_URL` is read from the root `.env`.
+
+## Data access
+
+`backend/app/db/crud.py` has small functions for reading and writing repositories, discussions and comments. `upsert_discussion` and `upsert_comment` use PostgreSQL `ON CONFLICT` on the unique keys above, so re-importing the same GitHub item updates it in place.
+
+## Database tests
+
+Tests in `backend/tests/test_db/` run against a real database and are skipped unless `TEST_DATABASE_URL` is set. Each test runs in a transaction that is rolled back.
+
+```bash
+createdb decision_intelligence_test
+DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/decision_intelligence_test alembic upgrade head
+TEST_DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/decision_intelligence_test pytest
+```
+
+CI installs pgvector on the runner's PostgreSQL and runs these tests on every pull request.

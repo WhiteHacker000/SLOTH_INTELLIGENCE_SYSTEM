@@ -27,7 +27,7 @@ Update directly related documentation. Avoid adding infrastructure or dependenci
 
 CI runs the same checks on every pull request.
 
-Unit tests should not require real GitHub credentials, a running database, or an Ollama server. Mock external integrations when they are introduced.
+Unit tests should not require real GitHub credentials, a running database, or an Ollama server. Mock external integrations when they are introduced. Database tests are the exception: they skip unless `TEST_DATABASE_URL` is set. See [docs/database-schema.md](docs/database-schema.md#database-tests).
 
 ## Code of conduct
 
