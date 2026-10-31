@@ -124,7 +124,7 @@ The initial screen is intentionally a foundation/status page; it does not yet ca
 
 Backend runtime dependencies are listed in `backend/requirements.txt`; test-only dependencies are in `backend/requirements-dev.txt`. `backend/pyproject.toml` configures the package and pytest. Frontend dependencies and scripts are managed with npm and `frontend/package-lock.json`.
 
-SQLAlchemy, Psycopg 3, and pgvector are included to establish PostgreSQL persistence boundaries. Alembic is deliberately deferred until schema evolution needs versioned migrations; introduce it before sharing or deploying a changing database schema. The frontend's `components.json` configures shadcn/ui generation; shadcn components are added as needed rather than installing a large UI bundle up front.
+SQLAlchemy, Psycopg 3, and pgvector handle PostgreSQL persistence, and Alembic manages schema migrations. Run `alembic upgrade head` from `backend/` after setting `DATABASE_URL`. See [docs/database-schema.md](docs/database-schema.md). The frontend's `components.json` configures shadcn/ui generation; shadcn components are added as needed rather than installing a large UI bundle up front.
 
 ## Planned implementation stages
 

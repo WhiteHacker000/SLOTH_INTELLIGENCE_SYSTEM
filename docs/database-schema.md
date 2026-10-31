@@ -1,6 +1,6 @@
 # Database schema
 
-Models live in `backend/app/models/entities.py`.
+Models live in `backend/app/models/entities.py`. Migrations live in `backend/migrations/` and are managed with Alembic.
 
 | Table | Purpose | Key columns |
 | --- | --- | --- |
@@ -20,3 +20,18 @@ Models live in `backend/app/models/entities.py`.
 - **`confidence`** is the model's own score. It is not a calibrated probability.
 - A vector index (HNSW) will be added with the embedding pipeline, once there is data to tune it on.
 - PostgreSQL 15+ is required (the chunk unique constraint uses `NULLS NOT DISTINCT`).
+
+## Running migrations
+
+The pgvector extension must be installed on the server. The first migration runs `CREATE EXTENSION IF NOT EXISTS vector`, so the database user needs permission to create it, or a superuser can create it once beforehand.
+
+From `backend/`:
+
+```bash
+alembic upgrade head      # apply migrations
+alembic downgrade -1      # roll back one migration
+alembic revision --autogenerate -m "describe change"   # after editing models
+alembic check             # fails if models and migrations have drifted
+```
+
+`DATABASE_URL` is read from the root `.env`.
