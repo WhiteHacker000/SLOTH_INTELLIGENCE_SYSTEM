@@ -10,7 +10,7 @@ from app.db.session import SessionLocal
 from app.ingestion.estimate import estimate_import
 from app.ingestion.github_client import GitHubReader, create_github_client
 from app.ingestion.importer import import_repository
-from app.models import Comment, Discussion, Repository
+from app.models import Comment, Discussion, Repository, SyncStatus
 from app.schemas.repositories import (
     ImportEstimateRead,
     RepositoryDetail,
@@ -18,6 +18,8 @@ from app.schemas.repositories import (
 )
 
 logger = logging.getLogger(__name__)
+
+UNEXPECTED_SYNC_ERROR = "Sync failed unexpectedly. Saved progress was kept."
 
 
 def register_repository(
@@ -68,6 +70,14 @@ def run_sync(repository_id: UUID, token: str | None) -> None:
         repository = crud.get_repository(session, repository_id)
         if repository is None:
             return
-        result = import_repository(session, github, repository)
-        session.commit()
+        try:
+            result = import_repository(session, github, repository, session.commit)
+            session.commit()
+        except Exception:
+            logger.exception("Sync of %s crashed", repository.full_name)
+            session.rollback()
+            repository.sync_status = SyncStatus.FAILED
+            repository.last_sync_error = UNEXPECTED_SYNC_ERROR
+            session.commit()
+            return
         logger.info("Sync of %s finished: %s", repository.full_name, result)

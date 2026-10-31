@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.db import crud
 from app.ingestion.github_client import RateLimit, RateLimitExceeded, RepositoryNotFound
-from app.ingestion.importer import RATE_LIMITED_ERROR, import_repository
-from app.models import Comment, CommentKind, Discussion, DiscussionKind
+from app.ingestion.importer import RATE_LIMITED_ERROR, SAVE_EVERY, import_repository
+from app.models import Comment, CommentKind, Discussion, DiscussionKind, SyncStatus
 
 API = "https://api.github.com/repos/a/b"
 WEB = "https://github.com/a/b"
@@ -102,6 +102,7 @@ def test_imports_discussions_comments_and_reviews(db_session: Session) -> None:
     assert repo.github_id == 1
     assert repo.last_synced_at is not None
     assert repo.last_sync_error is None
+    assert repo.sync_status is SyncStatus.SYNCED
 
 
 def test_second_import_does_not_duplicate_and_uses_since(db_session: Session) -> None:
@@ -129,6 +130,7 @@ def test_rate_limit_pauses_and_keeps_checkpoint(db_session: Session) -> None:
     assert count(db_session, Discussion) == 2
     assert repo.last_synced_at is None
     assert repo.last_sync_error == RATE_LIMITED_ERROR
+    assert repo.sync_status is SyncStatus.PAUSED
 
 
 def test_missing_repository_is_recorded(db_session: Session) -> None:
@@ -139,3 +141,18 @@ def test_missing_repository_is_recorded(db_session: Session) -> None:
     assert result.paused is False
     assert result.message == "Repository or resource not found"
     assert repo.last_sync_error == result.message
+    assert repo.sync_status is SyncStatus.FAILED
+
+
+def test_progress_is_saved_while_importing(db_session: Session) -> None:
+    repo = crud.create_repository(db_session, full_name="a/b", html_url=WEB)
+    issues = [item(number) for number in range(1, SAVE_EVERY * 2 + 1)]
+    github = FakeGitHub({"/repos/a/b/issues": issues})
+    statuses: list[SyncStatus] = []
+
+    import_repository(
+        db_session, github, repo, lambda: statuses.append(repo.sync_status)
+    )
+
+    # Once when the sync starts, then after every SAVE_EVERY rows.
+    assert statuses == [SyncStatus.RUNNING] * 3

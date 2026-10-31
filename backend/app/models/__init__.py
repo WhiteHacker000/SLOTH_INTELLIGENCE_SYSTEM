@@ -9,6 +9,7 @@ from app.models.entities import (
     DiscussionKind,
     DocumentChunk,
     Repository,
+    SyncStatus,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "DiscussionKind",
     "DocumentChunk",
     "Repository",
+    "SyncStatus",
 ]

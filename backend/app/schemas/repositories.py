@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
+from app.models import SyncStatus
+
 GITHUB_REPOSITORY = re.compile(
     r"^(?:https?://(?:www\.)?github\.com/)?"
     r"(?P<owner>[A-Za-z0-9-]+)/(?P<name>[A-Za-z0-9._-]+?)(?:\.git)?/?$"
@@ -50,6 +52,7 @@ class RepositoryRead(BaseModel):
     description: str | None
     last_synced_at: datetime | None
     last_sync_error: str | None
+    sync_status: SyncStatus
     created_at: datetime
 
 
