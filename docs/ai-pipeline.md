@@ -12,7 +12,17 @@ Steps 1, 2 and 4 are implemented. Decision extraction, retrieval, answers and ev
 
 ## Model configuration
 
-`GEMMA_MODEL` configures the Ollama chat model. `EMBEDDING_MODEL` configures embeddings separately. A configured model name does not mean Ollama has downloaded or served it; model acquisition and health checks are future implementation work.
+`GEMMA_MODEL` configures the Ollama chat model. `EMBEDDING_MODEL` configures embeddings separately.
+
+Set up Gemma with `ollama pull gemma3:4b` (about 3.4 GB). It uses about 3.5 GB of memory while loaded.
+
+`backend/app/generation/llm.py` talks to Ollama:
+
+- Every request sends a JSON schema built from a Pydantic model, so Gemma must answer in that shape. Output is validated again with Pydantic.
+- Temperature is 0, so the same input gives the same output.
+- Bad output (not JSON, or wrong fields) is retried once. A missing model or a stopped Ollama fails at once with a message saying how to fix it.
+- Measured locally: about 20 s for the first call while the model loads, then about 1 s for a short prompt.
+- Ollama's default context is 4096 tokens, so long threads must be trimmed before they are sent.
 
 ## Embedding setup
 
