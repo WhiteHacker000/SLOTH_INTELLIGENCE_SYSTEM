@@ -28,3 +28,8 @@ export interface RepositoryRegistered {
   repository: Repository;
   estimate: ImportEstimate;
 }
+
+export interface StartedJob {
+  repository_id: string;
+  message: string;
+}
