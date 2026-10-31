@@ -103,6 +103,10 @@ class Discussion(Base):
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set once decision extraction has run on this thread, even if it found none.
+    decisions_extracted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
 
 
 class Comment(Base):

@@ -15,6 +15,8 @@
   - Body (optional): `{"token": "..."}`. The token is used for this sync only and is not stored or logged. Without it, `GITHUB_TOKEN` from `.env` is used, else the import runs anonymously.
   - Check progress with `GET /api/v1/repositories/{id}`. Counts update while the sync runs, since progress is saved every 100 rows.
   - `sync_status` is one of `never_synced`, `running`, `paused`, `failed`, `synced`. `paused` means the rate limit ran out: `last_sync_error` asks for a token and the next sync continues from the last checkpoint.
+- `GET /api/v1/repositories/{id}/decisions` lists extracted decisions with `decision`, `rationale`, `alternatives` and `evidence` (quote plus GitHub link).
+- `POST /api/v1/repositories/{id}/extract` runs Gemma in the background on the 15 most-discussed threads not processed yet, and returns `202` with how many threads it picked. Run it again for the next 15. Each thread takes about 15 seconds.
 - `POST /api/v1/search` returns the discussion chunks closest in meaning to a question.
   - Body: `{"query": "Why was X rejected?", "repository_full_name": "owner/name", "source_types": ["issue", "review"], "limit": 5}`. Only `query` is required; `limit` is 1 to 20.
   - Each result has its text, `similarity` (0 to 1), `source_url`, `source_type`, issue or PR number and title, author and time.
@@ -30,6 +32,5 @@
 
 ## Planned API areas
 
-- Decisions: list/filter by status, inspect a decision, and include linked evidence.
 
 Use Pydantic schemas for request and response validation. Return stable source URLs rather than opaque citations. Keep route handlers thin; put multi-step use cases in `services/`. Add endpoints only with a tested use case—this is not a commitment to a particular route shape.

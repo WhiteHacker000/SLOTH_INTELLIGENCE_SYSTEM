@@ -15,6 +15,7 @@ from app.ingestion.github_client import (
     create_github_client,
 )
 from app.models import Repository
+from app.schemas.decisions import DecisionRead, ExtractionStarted
 from app.schemas.repositories import (
     RepositoryCreate,
     RepositoryDetail,
@@ -23,7 +24,7 @@ from app.schemas.repositories import (
     SyncStarted,
     TokenRequest,
 )
-from app.services import repositories as service
+from app.services import decisions as decision_service, repositories as service
 
 router = APIRouter(prefix="/repositories", tags=["repositories"])
 
@@ -32,6 +33,7 @@ RATE_LIMIT_MESSAGE = "GitHub rate limit reached. Add your GitHub token to contin
 SessionDep = Annotated[Session, Depends(get_session)]
 GitHubFactory = Callable[[str | None], GitHubClient]
 SyncRunner = Callable[[UUID, str | None], None]
+ExtractionRunner = Callable[[list[UUID]], None]
 
 
 def get_github_factory() -> GitHubFactory:
@@ -40,6 +42,10 @@ def get_github_factory() -> GitHubFactory:
 
 def get_sync_runner() -> SyncRunner:
     return service.run_sync
+
+
+def get_extraction_runner() -> ExtractionRunner:
+    return decision_service.run_extraction
 
 
 @router.post(
@@ -92,6 +98,31 @@ def sync_repository(
     token = body.token_value() if body else None
     background.add_task(run_sync, repository.id, token)
     return SyncStarted(repository_id=repository.id, message="Sync started")
+
+
+@router.get("/{repository_id}/decisions", response_model=list[DecisionRead])
+def list_decisions(repository_id: UUID, session: SessionDep) -> list[DecisionRead]:
+    return decision_service.list_decisions(session, _find(session, repository_id).id)
+
+
+@router.post(
+    "/{repository_id}/extract",
+    response_model=ExtractionStarted,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def extract_repository_decisions(
+    repository_id: UUID,
+    session: SessionDep,
+    background: BackgroundTasks,
+    run_extraction: Annotated[ExtractionRunner, Depends(get_extraction_runner)],
+) -> ExtractionStarted:
+    repository = _find(session, repository_id)
+    threads = decision_service.threads_to_extract(session, repository.id)
+    background.add_task(run_extraction, threads)
+    message = "Extraction started" if threads else "All threads are already processed"
+    return ExtractionStarted(
+        repository_id=repository.id, threads=len(threads), message=message
+    )
 
 
 def _find(session: Session, repository_id: UUID) -> Repository:
