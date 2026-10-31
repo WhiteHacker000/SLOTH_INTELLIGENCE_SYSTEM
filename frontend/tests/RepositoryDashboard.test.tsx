@@ -15,22 +15,32 @@ const repo = {
   discussion_count: 12,
   comment_count: 30,
   decision_count: 4,
+  extracting: false,
 };
 
-function serve(routes: Record<string, unknown>) {
+type Route = unknown | (() => unknown);
+
+function serve(routes: Record<string, Route>) {
   const fetchMock = vi.fn<typeof fetch>(async (input) => {
     const url = String(input);
-    const body = routes[url.replace("/api/v1", "")];
+    const route = routes[url.replace("/api/v1", "")];
+    const body = typeof route === "function" ? route() : route;
     return new Response(JSON.stringify(body), { status: body ? 200 : 404 });
   });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
 
-function renderDashboard(token = "") {
+function renderDashboard(token = "", selectedId: string | null = null) {
   const onSelect = vi.fn();
-  render(<RepositoryDashboard token={token} refreshKey={0} selectedId={null} onSelect={onSelect} />);
+  render(<RepositoryDashboard token={token} refreshKey={0} selectedId={selectedId} onSelect={onSelect} />);
   return onSelect;
+}
+
+/** Returns `running` once, then `done`, like the server during a job. */
+function sequence(running: object, done: object) {
+  let calls = 0;
+  return () => (calls++ === 0 ? { ...repo, ...running } : { ...repo, ...done });
 }
 
 afterEach(() => vi.unstubAllGlobals());
@@ -46,28 +56,59 @@ describe("RepositoryDashboard", () => {
     expect(screen.getByText(/rate limit reached/)).toBeInTheDocument();
   });
 
-  it("starts a sync with the pasted token and shows the reply", async () => {
+  it("shows a sync running and then completed, sending the pasted token", async () => {
+    let started = false;
+    const status = sequence({ sync_status: "running" }, { sync_status: "synced" });
     const fetchMock = serve({
       "/repositories": [repo],
-      "/repositories/r1": repo,
-      "/repositories/r1/sync": { repository_id: "r1", message: "Sync started" },
+      "/repositories/r1": () => (started ? status() : repo),
+      "/repositories/r1/sync": () => {
+        started = true;
+        return { repository_id: "r1", message: "Sync started" };
+      },
     });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     renderDashboard("ghp_test");
 
     fireEvent.click(await screen.findByRole("button", { name: "Sync" }));
+    expect(await screen.findByText("Syncing…")).toBeInTheDocument();
+    await vi.advanceTimersByTimeAsync(5000);
 
-    expect(await screen.findByText("Sync started")).toBeInTheDocument();
+    expect(await screen.findByText("Sync completed")).toBeInTheDocument();
+    vi.useRealTimers();
     const [, init] = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/sync"))!;
     expect(JSON.parse(init?.body as string)).toEqual({ token: "ghp_test" });
   });
 
-  it("selects a repository", async () => {
+  it("shows extraction finishing with the number of new decisions", async () => {
+    let started = false;
+    const status = sequence({ extracting: true }, { decision_count: 9 });
+    serve({
+      "/repositories": [repo],
+      "/repositories/r1": () => (started ? status() : repo),
+      "/repositories/r1/extract": () => {
+        started = true;
+        return { repository_id: "r1", threads: 15, message: "Extraction started" };
+      },
+    });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderDashboard();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Extract decisions" }));
+    expect(await screen.findByText("Extracting decisions…")).toBeInTheDocument();
+    await vi.advanceTimersByTimeAsync(5000);
+
+    expect(await screen.findByText("Extraction completed · 5 new decisions")).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it("selects a repository, and deselects it when clicked again", async () => {
     serve({ "/repositories": [repo], "/repositories/r1": repo });
-    const onSelect = renderDashboard();
+    const onSelect = renderDashboard("", "r1");
 
-    fireEvent.click(await screen.findByRole("button", { name: "Select" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Deselect" }));
 
-    expect(onSelect).toHaveBeenCalledWith(repo);
+    expect(onSelect).toHaveBeenCalledWith(null);
   });
 
   it("shows an empty state", async () => {

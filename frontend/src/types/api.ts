@@ -15,6 +15,7 @@ export interface RepositoryDetail extends Repository {
   discussion_count: number;
   comment_count: number;
   decision_count: number;
+  extracting: boolean;
 }
 
 export interface ImportEstimate {
