@@ -20,11 +20,16 @@
   - Each result has its text, `similarity` (0 to 1), `source_url`, `source_type`, issue or PR number and title, author and time.
   - Errors: `404` unknown repository, `503` embeddings not installed on the server.
   - Search is exact (no vector index yet), which is fast enough for tens of thousands of chunks. Similarity alone does not mean the evidence answers the question.
+- `POST /api/v1/ask` answers a question from imported discussions.
+  - Body: `{"question": "Why was X rejected?", "repository_full_name": "owner/name", "limit": 6}`. Only `question` is required.
+  - Returns `status` (`answered` or `insufficient_evidence`), `answer`, `citations` (the search results the answer used) and `limitations`.
+  - If no result scores at least 0.65 similarity, it returns `insufficient_evidence` without calling the model.
+  - Citations are checked against the retrieved results. An answer with no real citation becomes `insufficient_evidence`.
+  - Errors: `404` unknown repository, `503` embeddings or Ollama not available.
 - FastAPI generates OpenAPI at `/openapi.json` and interactive docs at `/docs`.
 
 ## Planned API areas
 
 - Decisions: list/filter by status, inspect a decision, and include linked evidence.
-- Questions: submit a repository-scoped question and return an answer with cited sources and evidence sufficiency/conflict information.
 
 Use Pydantic schemas for request and response validation. Return stable source URLs rather than opaque citations. Keep route handlers thin; put multi-step use cases in `services/`. Add endpoints only with a tested use case—this is not a commitment to a particular route shape.
