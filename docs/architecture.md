@@ -51,4 +51,4 @@ Use a small shared component layer and organize substantial UI by feature as it 
 
 ## Schema evolution
 
-The initial SQLAlchemy models are a schema starting point, not a deployed database. Add a lightweight migration tool such as Alembic before relying on repeatable schema changes across developer or deployed databases. Keep PostgreSQL and pgvector as the only storage components.
+Schema changes go through Alembic migrations in `backend/migrations/`. See [database-schema.md](database-schema.md). Keep PostgreSQL and pgvector as the only storage components.
