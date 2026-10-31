@@ -1,4 +1,5 @@
 from enum import StrEnum
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -39,3 +40,25 @@ class DecisionExtraction(BaseModel):
 
 class ExtractionResult(BaseModel):
     decisions: list[DecisionExtraction] = Field(max_length=5)
+
+
+class EvidenceRead(BaseModel):
+    excerpt: str
+    source_url: str
+
+
+class DecisionRead(BaseModel):
+    """What the decision explorer shows."""
+
+    id: UUID
+    title: str
+    decision: str
+    rationale: list[str]
+    alternatives: list[RejectedAlternative]
+    evidence: list[EvidenceRead]
+
+
+class ExtractionStarted(BaseModel):
+    repository_id: UUID
+    threads: int
+    message: str

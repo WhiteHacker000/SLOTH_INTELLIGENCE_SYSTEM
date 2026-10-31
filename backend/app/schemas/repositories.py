@@ -59,6 +59,7 @@ class RepositoryRead(BaseModel):
 class RepositoryDetail(RepositoryRead):
     discussion_count: int
     comment_count: int
+    decision_count: int
 
 
 class RepositoryRegistered(BaseModel):

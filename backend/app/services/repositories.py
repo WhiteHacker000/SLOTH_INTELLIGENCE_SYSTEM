@@ -12,7 +12,7 @@ from app.embeddings.pipeline import embed_pending_chunks
 from app.ingestion.estimate import estimate_import
 from app.ingestion.github_client import GitHubReader, create_github_client
 from app.ingestion.importer import import_repository
-from app.models import Comment, Discussion, Repository, SyncStatus
+from app.models import Comment, Decision, Discussion, Repository, SyncStatus
 from app.processing.chunks import chunk_repository
 from app.schemas.repositories import (
     ImportEstimateRead,
@@ -58,9 +58,15 @@ def repository_detail(session: Session, repository: Repository) -> RepositoryDet
         .select_from(Comment)
         .where(Comment.discussion_id.in_(discussion_ids))
     )
+    decisions = session.scalar(
+        select(func.count()).where(Decision.repository_id == repository.id)
+    )
     base = RepositoryRead.model_validate(repository).model_dump()
     return RepositoryDetail(
-        **base, discussion_count=discussions or 0, comment_count=comments or 0
+        **base,
+        discussion_count=discussions or 0,
+        comment_count=comments or 0,
+        decision_count=decisions or 0,
     )
 
 
