@@ -42,3 +42,19 @@ export interface Decision {
   alternatives: { approach: string; rejection_reason: string }[];
   evidence: { excerpt: string; source_url: string }[];
 }
+
+export interface Citation {
+  content: string;
+  source_url: string;
+  discussion_number: number;
+  discussion_title: string;
+  author: string | null;
+}
+
+export interface AskResponse {
+  question: string;
+  status: "answered" | "insufficient_evidence";
+  answer: string | null;
+  citations: Citation[];
+  limitations: string | null;
+}

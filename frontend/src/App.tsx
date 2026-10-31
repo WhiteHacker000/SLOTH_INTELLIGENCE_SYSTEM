@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { AskPanel } from "@/features/ask/AskPanel";
 import { DecisionExplorer } from "@/features/decisions/DecisionExplorer";
 import { ImportForm } from "@/features/repositories/ImportForm";
 import { RepositoryDashboard } from "@/features/repositories/RepositoryDashboard";
@@ -40,6 +41,13 @@ export default function App() {
           selectedId={selected?.id ?? null}
           onSelect={setSelected}
         />
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">
+          Ask {selected ? `about ${selected.full_name}` : "across all repositories"}
+        </h2>
+        <AskPanel repositoryFullName={selected?.full_name ?? null} />
       </section>
 
       {selected && (

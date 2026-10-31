@@ -73,12 +73,18 @@ def test_no_valid_support_means_insufficient(reply: dict[str, Any]) -> None:
     assert result.answer is None and result.citations == []
 
 
-def test_source_ids_are_removed_from_the_answer() -> None:
-    reply = {**draft(["S1"]), "answer": "Dropped (S1). Uses S3 buckets.</source>S1"}
+def test_source_ids_become_numbered_footnotes() -> None:
+    reply = {
+        **draft(["S2"]),
+        "answer": "Dropped (S2). Agreed by [S1, S9]. Uses S3 buckets.</source>S1",
+    }
 
-    result = answer_from_evidence(FakeModel(reply), "Why?", [evidence(0.8)])
+    result = answer_from_evidence(
+        FakeModel(reply), "Why?", [evidence(0.8, 1), evidence(0.8, 2)]
+    )
 
-    assert result.answer == "Dropped. Uses S3 buckets."
+    assert result.answer == "Dropped [1]. Agreed by [2]. Uses S3 buckets."
+    assert [c.discussion_number for c in result.citations] == [2, 1]
 
 
 def test_sources_cannot_close_their_tag() -> None:
