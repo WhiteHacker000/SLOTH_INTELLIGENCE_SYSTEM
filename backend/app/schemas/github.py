@@ -9,6 +9,7 @@ class DiscussionSourceType(StrEnum):
     PULL_REQUEST = "pull_request"
     ISSUE_COMMENT = "issue_comment"
     REVIEW_COMMENT = "review_comment"
+    REVIEW = "review"
 
 
 class GitHubDiscussion(BaseModel):
