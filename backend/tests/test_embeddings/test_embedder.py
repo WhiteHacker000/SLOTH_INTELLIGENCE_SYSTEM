@@ -1,6 +1,5 @@
 import sys
 
-import numpy as np
 import pytest
 
 from app.embeddings.embedder import (
@@ -10,13 +9,20 @@ from app.embeddings.embedder import (
 )
 
 
+class FakeVector(list):
+    """Stands in for a numpy row, which has tolist()."""
+
+    def tolist(self) -> list[float]:
+        return list(self)
+
+
 class FakeModel:
     def __init__(self) -> None:
         self.seen: list[str] = []
 
-    def encode(self, texts: list[str], **_: object) -> np.ndarray:
+    def encode(self, texts: list[str], **_: object) -> list[FakeVector]:
         self.seen.extend(texts)
-        return np.ones((len(texts), 384), dtype=np.float32)
+        return [FakeVector([1.0] * 384) for _ in texts]
 
 
 def test_documents_are_embedded_as_plain_lists() -> None:
