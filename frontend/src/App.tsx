@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { DecisionExplorer } from "@/features/decisions/DecisionExplorer";
 import { ImportForm } from "@/features/repositories/ImportForm";
 import { RepositoryDashboard } from "@/features/repositories/RepositoryDashboard";
 import type { RepositoryDetail } from "@/types/api";
@@ -40,6 +41,15 @@ export default function App() {
           onSelect={setSelected}
         />
       </section>
+
+      {selected && (
+        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">
+            Decisions in {selected.full_name}
+          </h2>
+          <DecisionExplorer repositoryId={selected.id} />
+        </section>
+      )}
     </main>
   );
 }
