@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import AnyHttpUrl, BaseModel, Field
 
 from app.schemas.github import DiscussionSourceType
@@ -16,3 +18,12 @@ class RetrievedEvidence(BaseModel):
     similarity: float = Field(ge=0, le=1)
     repository_full_name: str
     source_type: DiscussionSourceType
+    discussion_number: int
+    discussion_title: str
+    author: str | None
+    created_at: datetime
+
+
+class SearchResponse(BaseModel):
+    query: str
+    results: list[RetrievedEvidence]
