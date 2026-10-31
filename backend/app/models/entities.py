@@ -29,6 +29,14 @@ class DiscussionKind(StrEnum):
     PULL_REQUEST = "pull_request"
 
 
+class SyncStatus(StrEnum):
+    NEVER_SYNCED = "never_synced"
+    RUNNING = "running"
+    PAUSED = "paused"
+    FAILED = "failed"
+    SYNCED = "synced"
+
+
 class CommentKind(StrEnum):
     ISSUE_COMMENT = "issue_comment"
     REVIEW_COMMENT = "review_comment"
@@ -58,6 +66,11 @@ class Repository(Base):
     default_branch: Mapped[str | None] = mapped_column(String(255))
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_sync_error: Mapped[str | None] = mapped_column(Text)
+    sync_status: Mapped[SyncStatus] = mapped_column(
+        _enum_column(SyncStatus, "sync_status"),
+        default=SyncStatus.NEVER_SYNCED,
+        server_default=SyncStatus.NEVER_SYNCED.value,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utc_now
     )
