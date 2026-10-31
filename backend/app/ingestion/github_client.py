@@ -79,8 +79,13 @@ class GitHubClient:
         self.rate_limit = RateLimit()
         self._max_retries = max_retries
         self._sleep = sleep
+        # GitHub redirects renamed and transferred repositories.
         self._http = httpx.Client(
-            base_url=base_url, headers=headers, timeout=timeout, transport=transport
+            base_url=base_url,
+            headers=headers,
+            timeout=timeout,
+            transport=transport,
+            follow_redirects=True,
         )
 
     def __enter__(self) -> "GitHubClient":
