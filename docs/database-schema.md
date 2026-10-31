@@ -40,6 +40,16 @@ alembic check             # fails if models and migrations have drifted
 
 `backend/app/db/crud.py` has small functions for reading and writing repositories, discussions and comments. `upsert_discussion` and `upsert_comment` use PostgreSQL `ON CONFLICT` on the unique keys above, so re-importing the same GitHub item updates it in place.
 
+## Chunks
+
+`backend/app/processing/` turns discussions and comments into `document_chunks`:
+
+- Template comments (`<!-- -->`) and images are removed. Code blocks are kept as written.
+- Text is split on paragraph breaks into chunks of up to about 1,200 characters. A longer paragraph is cut into windows that overlap by 150 characters.
+- Each chunk starts with its issue or PR heading, e.g. `Issue #7: Vector storage`, so a comment chunk still has context.
+- Every chunk keeps its `source_url`. Author and time come from the linked discussion or comment.
+- Running it again keeps unchanged chunks and their embeddings, clears the embedding of edited ones, and deletes chunks whose text is gone.
+
 ## Database tests
 
 Tests in `backend/tests/test_db/` run against a real database and are skipped unless `TEST_DATABASE_URL` is set. Each test runs in a transaction that is rolled back.
