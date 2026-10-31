@@ -3,7 +3,7 @@ import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Protocol
 
 import httpx
 
@@ -38,6 +38,19 @@ class RateLimit:
     limit: int | None = None
     remaining: int | None = None
     reset_at: datetime | None = None
+
+
+class GitHubReader(Protocol):
+    """What the import code needs from a GitHub client."""
+
+    authenticated: bool
+    rate_limit: RateLimit
+
+    def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any: ...
+
+    def paginate(
+        self, path: str, params: dict[str, Any] | None = None
+    ) -> Iterator[dict[str, Any]]: ...
 
 
 class GitHubClient:
