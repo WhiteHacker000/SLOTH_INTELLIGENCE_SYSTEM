@@ -14,7 +14,7 @@ from app.ingestion.github_client import (
     RepositoryNotFound,
     create_github_client,
 )
-from app.models import Repository
+from app.models import Repository, SyncStatus
 from app.schemas.decisions import DecisionRead, ExtractionStarted
 from app.schemas.repositories import (
     RepositoryCreate,
@@ -33,7 +33,7 @@ RATE_LIMIT_MESSAGE = "GitHub rate limit reached. Add your GitHub token to contin
 SessionDep = Annotated[Session, Depends(get_session)]
 GitHubFactory = Callable[[str | None], GitHubClient]
 SyncRunner = Callable[[UUID, str | None], None]
-ExtractionRunner = Callable[[list[UUID]], None]
+ExtractionRunner = Callable[[UUID, list[UUID]], None]
 
 
 def get_github_factory() -> GitHubFactory:
@@ -96,6 +96,9 @@ def sync_repository(
 ) -> SyncStarted:
     repository = _find(session, repository_id)
     token = body.token_value() if body else None
+    # Show "running" straight away instead of after the background task starts.
+    repository.sync_status = SyncStatus.RUNNING
+    session.commit()
     background.add_task(run_sync, repository.id, token)
     return SyncStarted(repository_id=repository.id, message="Sync started")
 
@@ -118,7 +121,9 @@ def extract_repository_decisions(
 ) -> ExtractionStarted:
     repository = _find(session, repository_id)
     threads = decision_service.threads_to_extract(session, repository.id)
-    background.add_task(run_extraction, threads)
+    if threads:
+        decision_service.extracting.add(repository.id)
+        background.add_task(run_extraction, repository.id, threads)
     message = "Extraction started" if threads else "All threads are already processed"
     return ExtractionStarted(
         repository_id=repository.id, threads=len(threads), message=message

@@ -19,6 +19,7 @@ from app.schemas.repositories import (
     RepositoryDetail,
     RepositoryRead,
 )
+from app.services.decisions import extracting
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ def repository_detail(session: Session, repository: Repository) -> RepositoryDet
         discussion_count=discussions or 0,
         comment_count=comments or 0,
         decision_count=decisions or 0,
+        extracting=repository.id in extracting,
     )
 
 

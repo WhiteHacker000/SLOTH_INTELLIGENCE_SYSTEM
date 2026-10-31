@@ -9,7 +9,7 @@ from app.db.session import get_session
 from app.main import app
 from app.models import CommentKind, Decision, DecisionEvidence, DiscussionKind
 from app.schemas.decisions import DecisionStatus
-from app.services.decisions import threads_to_extract
+from app.services.decisions import extracting, threads_to_extract
 
 CREATED = datetime(2026, 1, 2, tzinfo=UTC)
 WEB = "https://github.com/a/b"
@@ -45,7 +45,9 @@ def seed(session: Session, comments_per_thread: list[int]):
 
 def client(session: Session, runs: list) -> TestClient:
     app.dependency_overrides[get_session] = lambda: session
-    app.dependency_overrides[get_extraction_runner] = lambda: runs.append
+    app.dependency_overrides[get_extraction_runner] = lambda: (
+        lambda repo_id, threads: runs.append(threads)
+    )
     return TestClient(app)
 
 
@@ -112,3 +114,8 @@ def test_extract_starts_background_run(db_session: Session) -> None:
     assert first.json()["threads"] == 2
     assert runs[0] == [threads[0].id, threads[1].id]
     assert again.json()["message"] == "All threads are already processed"
+    assert len(runs) == 1
+    detail = client(db_session, runs).get(f"/api/v1/repositories/{repo.id}")
+    app.dependency_overrides.clear()
+    extracting.discard(repo.id)
+    assert detail.json()["extracting"] is True
