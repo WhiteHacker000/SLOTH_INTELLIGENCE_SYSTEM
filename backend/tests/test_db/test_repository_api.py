@@ -1,11 +1,16 @@
 from collections.abc import Generator
 from typing import Any
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.api.routes.repositories import RATE_LIMIT_MESSAGE, get_github_factory
+from app.api.routes.repositories import (
+    RATE_LIMIT_MESSAGE,
+    get_github_factory,
+    get_sync_runner,
+)
 from app.db.session import get_session
 from app.ingestion.estimate import TOKEN_NEEDED_MESSAGE
 from app.ingestion.github_client import (
@@ -40,7 +45,7 @@ class FakeGitHub:
 
 @pytest.fixture
 def api(db_session: Session) -> Generator[dict[str, Any], None, None]:
-    state: dict[str, Any] = {"newest": 5, "missing": False, "tokens": []}
+    state: dict[str, Any] = {"newest": 5, "missing": False, "syncs": [], "tokens": []}
 
     def factory(token: str | None) -> FakeGitHub:
         state["tokens"].append(token)
@@ -48,6 +53,9 @@ def api(db_session: Session) -> Generator[dict[str, Any], None, None]:
 
     app.dependency_overrides[get_session] = lambda: db_session
     app.dependency_overrides[get_github_factory] = lambda: factory
+    app.dependency_overrides[get_sync_runner] = lambda: (
+        lambda repo_id, token: state["syncs"].append((repo_id, token))
+    )
     state["client"] = TestClient(app)
     yield state
     app.dependency_overrides.clear()
@@ -105,3 +113,27 @@ def test_rate_limit_asks_for_token(api: dict[str, Any]) -> None:
 
     assert response.status_code == 429
     assert response.json()["detail"] == RATE_LIMIT_MESSAGE
+
+
+def test_detail_includes_counts(api: dict[str, Any]) -> None:
+    created = api["client"].post("/api/v1/repositories", json={"url": "a/b"}).json()
+
+    detail = api["client"].get(f"/api/v1/repositories/{created['repository']['id']}")
+
+    assert detail.json()["discussion_count"] == 0
+    assert api["client"].get(f"/api/v1/repositories/{uuid4()}").status_code == 404
+
+
+def test_sync_runs_in_background_with_pasted_token(api: dict[str, Any]) -> None:
+    created = api["client"].post("/api/v1/repositories", json={"url": "a/b"}).json()
+    repo_id = created["repository"]["id"]
+
+    response = api["client"].post(
+        f"/api/v1/repositories/{repo_id}/sync", json={"token": "ghp_secret"}
+    )
+
+    assert response.status_code == 202
+    assert "ghp_secret" not in response.text
+    assert [(str(rid), token) for rid, token in api["syncs"]] == [
+        (repo_id, "ghp_secret")
+    ]

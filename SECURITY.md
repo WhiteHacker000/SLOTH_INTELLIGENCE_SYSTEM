@@ -14,5 +14,6 @@ The app reads public GitHub data and works without a token. A token only raises 
 
 - A token from `GITHUB_TOKEN` in `.env` stays on your machine. `.env` is ignored by Git.
 - The GitHub client keeps the token in memory and never writes it to logs.
+- A token sent with a sync request is used for that sync only. It is not stored in the database.
 - Read-only access to public repositories is enough. Do not use a token with write scopes.
 - If you deploy the backend, serve it over HTTPS before accepting tokens from users.

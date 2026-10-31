@@ -53,6 +53,16 @@ class RepositoryRead(BaseModel):
     created_at: datetime
 
 
+class RepositoryDetail(RepositoryRead):
+    discussion_count: int
+    comment_count: int
+
+
 class RepositoryRegistered(BaseModel):
     repository: RepositoryRead
     estimate: ImportEstimateRead
+
+
+class SyncStarted(BaseModel):
+    repository_id: UUID
+    message: str
