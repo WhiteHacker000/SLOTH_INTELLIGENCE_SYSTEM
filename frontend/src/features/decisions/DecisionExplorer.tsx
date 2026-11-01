@@ -52,8 +52,8 @@ export function DecisionExplorer({ repositoryId }: { repositoryId: string }) {
             <div className="mt-3">
               <h4 className="text-xs font-semibold uppercase text-slate-500">Why</h4>
               <ul className="mt-1 list-disc pl-5 text-sm text-slate-700">
-                {d.rationale.map((reason) => (
-                  <li key={reason}>{reason}</li>
+                {d.rationale.map((reason, i) => (
+                  <li key={i}>{reason}</li>
                 ))}
               </ul>
             </div>
@@ -62,8 +62,8 @@ export function DecisionExplorer({ repositoryId }: { repositoryId: string }) {
             <div className="mt-3">
               <h4 className="text-xs font-semibold uppercase text-slate-500">Alternatives</h4>
               <ul className="mt-1 list-disc pl-5 text-sm text-slate-700">
-                {d.alternatives.map((alt) => (
-                  <li key={alt.approach}>
+                {d.alternatives.map((alt, i) => (
+                  <li key={i}>
                     {alt.approach}
                     {alt.rejection_reason && ` — not chosen: ${alt.rejection_reason}`}
                   </li>
@@ -74,8 +74,8 @@ export function DecisionExplorer({ repositoryId }: { repositoryId: string }) {
           <div className="mt-3">
             <h4 className="text-xs font-semibold uppercase text-slate-500">Evidence</h4>
             <ul className="mt-1 space-y-2">
-              {d.evidence.map((e) => (
-                <li key={e.source_url + e.excerpt} className="text-sm">
+              {d.evidence.map((e, i) => (
+                <li key={i} className="text-sm">
                   <blockquote className="border-l-2 border-slate-300 pl-3 text-slate-700">
                     "{e.excerpt}"
                   </blockquote>

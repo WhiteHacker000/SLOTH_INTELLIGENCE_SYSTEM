@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { AskPanel } from "@/features/ask/AskPanel";
 import { DecisionExplorer } from "@/features/decisions/DecisionExplorer";
@@ -11,6 +11,13 @@ export default function App() {
   const [token, setToken] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [selected, setSelected] = useState<RepositoryDetail | null>(null);
+  const askSection = useRef<HTMLElement>(null);
+
+  function select(repository: RepositoryDetail | null) {
+    setSelected(repository);
+    // Take the user to the questions and decisions for the repo they picked.
+    if (repository) askSection.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
     <main className="mx-auto w-full max-w-5xl space-y-8 px-6 py-10">
@@ -39,25 +46,28 @@ export default function App() {
           token={token}
           refreshKey={refreshKey}
           selectedId={selected?.id ?? null}
-          onSelect={setSelected}
+          onSelect={select}
         />
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section ref={askSection} className="scroll-mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">
           Ask {selected ? `about ${selected.full_name}` : "across all repositories"}
         </h2>
         <AskPanel repositoryFullName={selected?.full_name ?? null} />
       </section>
 
-      {selected && (
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">
-            Decisions in {selected.full_name}
-          </h2>
-          <DecisionExplorer repositoryId={selected.id} />
-        </section>
-      )}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">
+          {selected ? `Decisions in ${selected.full_name}` : "Decisions"}
+        </h2>
+        {selected ? (
+          // The key resets the explorer so one repo's decisions never show under another.
+          <DecisionExplorer key={selected.id} repositoryId={selected.id} />
+        ) : (
+          <p className="text-sm text-slate-600">Select a repository above to see its decisions.</p>
+        )}
+      </section>
     </main>
   );
 }
