@@ -67,6 +67,23 @@ class DecisionRead(BaseModel):
     code: list[CodeReference] = []
 
 
+class PullRequestContextRequest(BaseModel):
+    repository_full_name: str
+    files: list[str] = Field(min_length=1, max_length=300)
+    limit: int = Field(default=5, ge=1, le=20)
+
+
+class RelatedDecision(BaseModel):
+    decision: DecisionRead
+    matched_files: list[str]
+    score: float
+
+
+class PullRequestContext(BaseModel):
+    repository_full_name: str
+    decisions: list[RelatedDecision]
+
+
 class ExtractionStarted(BaseModel):
     repository_id: UUID
     threads: int

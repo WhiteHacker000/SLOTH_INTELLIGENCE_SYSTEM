@@ -1,14 +1,17 @@
-"""Connect decisions to the files they touched."""
+"""Connect decisions to the files they touched, and find them again from a PR."""
 
 from collections import defaultdict
+from posixpath import dirname
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, or_, select, union
 from sqlalchemy.orm import Session
 
-from app.models import Comment, DecisionEvidence, DiscussionFile, Repository
+from app.models import Comment, Decision, DecisionEvidence, DiscussionFile, Repository
 from app.schemas.decisions import CodeReference
+
+SAME_FILE, SAME_FOLDER = 1.0, 0.3
 
 
 def _changed_files() -> Select[Any]:
@@ -45,3 +48,38 @@ def code_for(
             path, CodeReference(path=path, url=f"{web}/blob/{branch}/{path}")
         )
     return {d: sorted(r.values(), key=lambda c: c.path) for d, r in refs.items()}
+
+
+def related_decisions(
+    session: Session, repository_id: UUID, files: list[str], limit: int
+) -> list[tuple[UUID, list[str], float]]:
+    """Decisions that touched the same files, or files in the same folders.
+
+    Returns (decision id, matched files, score), best first.
+    """
+    wanted = set(files)
+    folders = {dirname(f) for f in files if dirname(f)}
+    touched = union(_changed_files(), _reviewed_lines()).subquery()
+    query = (
+        select(touched.c.decision_id, touched.c.path)
+        .join(Decision, Decision.id == touched.c.decision_id)
+        .where(
+            Decision.repository_id == repository_id,
+            or_(
+                touched.c.path.in_(wanted),
+                *(touched.c.path.startswith(f + "/", autoescape=True) for f in folders),
+            ),
+        )
+    )
+    matches: dict[UUID, set[str]] = defaultdict(set)
+    for decision_id, path in session.execute(query):
+        matches[decision_id].add(path)
+
+    def score(paths: set[str]) -> float:
+        return sum(SAME_FILE if p in wanted else SAME_FOLDER for p in paths)
+
+    ranked = sorted(matches.items(), key=lambda m: score(m[1]), reverse=True)
+    return [
+        (decision_id, sorted(paths, key=lambda p: (p not in wanted, p)), score(paths))
+        for decision_id, paths in ranked[:limit]
+    ]

@@ -1,11 +1,14 @@
 from datetime import UTC, datetime
 
+from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.db import crud
+from app.db.session import get_session
+from app.main import app
 from app.models import CommentKind, Decision, DecisionEvidence, DiscussionKind
 from app.schemas.decisions import DecisionStatus
-from app.services.code_links import code_for
+from app.services.code_links import code_for, related_decisions
 
 CREATED = datetime(2026, 1, 2, tzinfo=UTC)
 WEB = "https://github.com/a/b"
@@ -100,3 +103,38 @@ def test_decisions_link_to_changed_files_and_reviewed_lines(db_session: Session)
         ("src/lock.py", None, f"{WEB}/blob/main/src/lock.py"),
     ]
     assert other.id not in code
+
+
+def test_same_file_ranks_above_same_folder(db_session: Session):
+    repo, cache, _ = seed(db_session)
+
+    exact = related_decisions(db_session, repo.id, ["src/cache.py"], limit=5)
+    nearby = related_decisions(db_session, repo.id, ["src/new.py"], limit=5)
+    unrelated = related_decisions(db_session, repo.id, ["README.md"], limit=5)
+
+    assert exact == [(cache.id, ["src/cache.py", "src/lock.py"], 1.3)]
+    assert nearby == [(cache.id, ["src/cache.py", "src/lock.py"], 0.6)]
+    assert unrelated == []
+
+
+def test_pr_context_endpoint(db_session: Session):
+    seed(db_session)
+    app.dependency_overrides[get_session] = lambda: db_session
+    try:
+        client = TestClient(app)
+        found = client.post(
+            "/api/v1/pr-context",
+            json={"repository_full_name": "a/b", "files": ["src/cache.py"]},
+        )
+        missing = client.post(
+            "/api/v1/pr-context",
+            json={"repository_full_name": "x/y", "files": ["a.py"]},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert missing.status_code == 404
+    [related] = found.json()["decisions"]
+    assert related["decision"]["title"] == "Remove the cache lock"
+    assert related["matched_files"] == ["src/cache.py", "src/lock.py"]
+    assert related["decision"]["code"][0]["line"] == 42
