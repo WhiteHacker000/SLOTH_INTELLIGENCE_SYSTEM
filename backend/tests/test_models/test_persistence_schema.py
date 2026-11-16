@@ -13,6 +13,7 @@ def test_all_tables_are_registered() -> None:
         "decisions",
         "decision_evidence",
         "jobs",
+        "discussion_files",
     }
 
 

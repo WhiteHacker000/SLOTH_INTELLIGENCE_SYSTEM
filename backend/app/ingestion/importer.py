@@ -10,8 +10,20 @@ from sqlalchemy.orm import Session
 
 from app.db import crud
 from app.ingestion.github_client import GitHubError, GitHubReader, RateLimitExceeded
-from app.ingestion.normalize import comment_values, discussion_values, parent_number
-from app.models import CommentKind, Discussion, DiscussionKind, Repository, SyncStatus
+from app.ingestion.normalize import (
+    comment_values,
+    discussion_values,
+    file_values,
+    parent_number,
+)
+from app.models import (
+    CommentKind,
+    Discussion,
+    DiscussionFile,
+    DiscussionKind,
+    Repository,
+    SyncStatus,
+)
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -123,6 +135,11 @@ def _import_all(
                 crud.upsert_comment(session, pr.id, **values)
                 result.count(save_progress, comment=True)
 
+    for pr in _prs_needing_files(session, repo.id, updated_prs):
+        files = github.paginate(f"{base}/pulls/{pr.number}/files")
+        values = [v for f in files if (v := _parse(file_values, f)) is not None]
+        crud.replace_discussion_files(session, pr.id, values)
+
 
 def _parse(convert: Callable[..., T], item: dict[str, Any], *args: Any) -> T | None:
     """Skip items with missing or malformed fields instead of failing the import."""
@@ -131,6 +148,23 @@ def _parse(convert: Callable[..., T], item: dict[str, Any], *args: Any) -> T | N
     except (KeyError, TypeError, ValueError):
         logger.warning("Skipping malformed GitHub item %s", item.get("html_url"))
         return None
+
+
+def _prs_needing_files(
+    session: Session, repository_id: UUID, updated: list[Discussion]
+) -> list[Discussion]:
+    """Updated PRs, plus older ones imported before changed files were saved."""
+    has_files = select(DiscussionFile.id).where(
+        DiscussionFile.discussion_id == Discussion.id
+    )
+    missing = session.scalars(
+        select(Discussion).where(
+            Discussion.repository_id == repository_id,
+            Discussion.kind == DiscussionKind.PULL_REQUEST,
+            ~has_files.exists(),
+        )
+    )
+    return list({pr.id: pr for pr in [*updated, *missing]}.values())
 
 
 def _discussion_id(session: Session, repository_id: UUID, number: int) -> UUID | None:
