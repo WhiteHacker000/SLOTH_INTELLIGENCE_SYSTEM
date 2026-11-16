@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "../src/App";
+import { setAdminKey } from "../src/lib/api";
 
 const repo = {
   id: "r1",
@@ -27,7 +28,10 @@ const decision = {
   evidence: [{ excerpt: "end of life", source_url: "https://github.com/pallets/click/pull/1" }],
 };
 
-const routes: Record<string, unknown> = {
+let routes: Record<string, unknown>;
+
+const openRoutes: Record<string, unknown> = {
+  "/admin": { key_required: false, key_valid: true },
   "/repositories": [repo],
   "/repositories/r1": repo,
   "/repositories/r1/decisions": [decision],
@@ -36,18 +40,22 @@ const routes: Record<string, unknown> = {
 const scrollIntoView = vi.fn();
 
 beforeEach(() => {
+  routes = openRoutes;
   // jsdom has no layout, so scrolling is recorded instead of performed.
   Element.prototype.scrollIntoView = scrollIntoView;
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (input: RequestInfo | URL) => {
-      const body = routes[String(input).replace("/api/v1", "")];
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input).replace("/api/v1", "");
+      const key = new Headers(init?.headers).get("X-Admin-Key");
+      const body = path === "/admin" && key === "secret" ? { key_required: true, key_valid: true } : routes[path];
       return new Response(JSON.stringify(body), { status: 200 });
     }),
   );
 });
 
 afterEach(() => {
+  setAdminKey("");
   vi.unstubAllGlobals();
   scrollIntoView.mockClear();
 });
@@ -74,5 +82,22 @@ describe("App", () => {
 
     expect(screen.getByText(/Select a repository above/)).toBeInTheDocument();
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides import until the right admin key is entered", async () => {
+    routes = { ...openRoutes, "/admin": { key_required: true, key_valid: false } };
+    render(<App />);
+
+    const input = await screen.findByLabelText("Admin key", { selector: "input" });
+    expect(screen.queryByText("Import a repository")).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "wrong" } });
+    fireEvent.click(screen.getByRole("button", { name: "Unlock" }));
+    expect(await screen.findByText("That admin key is not right.")).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Unlock" }));
+    expect(await screen.findByText("Import a repository")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Unlock" })).not.toBeInTheDocument();
   });
 });

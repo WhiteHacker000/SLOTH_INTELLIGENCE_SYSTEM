@@ -59,3 +59,8 @@ export interface AskResponse {
   citations: Citation[];
   limitations: string | null;
 }
+
+export interface AdminStatus {
+  key_required: boolean;
+  key_valid: boolean;
+}

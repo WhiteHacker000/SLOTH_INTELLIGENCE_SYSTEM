@@ -31,9 +31,17 @@ function serve(routes: Record<string, Route>) {
   return fetchMock;
 }
 
-function renderDashboard(token = "", selectedId: string | null = null) {
+function renderDashboard(token = "", selectedId: string | null = null, canManage = true) {
   const onSelect = vi.fn();
-  render(<RepositoryDashboard token={token} refreshKey={0} selectedId={selectedId} onSelect={onSelect} />);
+  render(
+    <RepositoryDashboard
+      token={token}
+      canManage={canManage}
+      refreshKey={0}
+      selectedId={selectedId}
+      onSelect={onSelect}
+    />,
+  );
   return onSelect;
 }
 
@@ -123,5 +131,15 @@ describe("RepositoryDashboard", () => {
     renderDashboard();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/backend running/);
+  });
+
+  it("hides sync and extract from visitors without the admin key", async () => {
+    serve({ "/repositories": [repo], "/repositories/r1": repo });
+    renderDashboard("", null, false);
+
+    expect(await screen.findByText("pallets/click")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sync" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Extract decisions" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select" })).toBeInTheDocument();
   });
 });
