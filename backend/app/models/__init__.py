@@ -8,6 +8,9 @@ from app.models.entities import (
     Discussion,
     DiscussionKind,
     DocumentChunk,
+    Job,
+    JobKind,
+    JobStatus,
     Repository,
     SyncStatus,
 )
@@ -20,6 +23,9 @@ __all__ = [
     "Discussion",
     "DiscussionKind",
     "DocumentChunk",
+    "Job",
+    "JobKind",
+    "JobStatus",
     "Repository",
     "SyncStatus",
 ]
