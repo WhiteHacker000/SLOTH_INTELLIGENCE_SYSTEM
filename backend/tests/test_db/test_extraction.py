@@ -1,13 +1,17 @@
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from typing import Any
 
+import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import crud
 from app.extraction.extractor import extract_decisions
+from app.generation.llm import InvalidModelOutput, LanguageModelError
 from app.models import CommentKind, Decision, DecisionEvidence, DiscussionKind
 from app.schemas.decisions import DecisionStatus
+from app.services import decisions
 
 CREATED = datetime(2026, 1, 2, tzinfo=UTC)
 URL = "https://github.com/a/b/pull/7"
@@ -117,3 +121,60 @@ def test_merge_state_is_not_sent_to_the_model(db_session: Session) -> None:
     run(db_session, pr, model)
 
     assert "merged" not in model.prompts[0].lower()
+
+
+class FlakyModel:
+    """Returns broken JSON for the first thread, or acts like a stopped Ollama."""
+
+    def __init__(self, down: bool = False) -> None:
+        self.down, self.calls = down, 0
+
+    def generate_json(self, system: str, prompt: str, schema: dict) -> dict:
+        self.calls += 1
+        if self.down:
+            raise LanguageModelError("Ollama is not running")
+        if self.calls <= 2:
+            raise InvalidModelOutput("Ollama returned invalid JSON")
+        return {"decisions": []}
+
+
+def use_model(monkeypatch, session: Session, model: FlakyModel) -> None:
+    # Seeded rows must be saved, as in real use, so a rollback keeps them.
+    session.commit()
+    monkeypatch.setattr(decisions, "SessionLocal", lambda: nullcontext(session))
+    monkeypatch.setattr(decisions, "get_language_model", lambda: model)
+
+
+def test_a_thread_with_bad_output_does_not_block_the_rest(
+    db_session: Session, monkeypatch
+) -> None:
+    first = make_pr(db_session)
+    second = crud.upsert_discussion(
+        db_session,
+        first.repository_id,
+        kind=DiscussionKind.ISSUE,
+        github_id=8,
+        number=8,
+        title="Use ruff",
+        state="open",
+        source_url=URL,
+        created_at=CREATED,
+    )
+    use_model(monkeypatch, db_session, FlakyModel())
+
+    decisions.run_extraction([first.id, second.id])
+
+    assert first.decisions_extracted_at is not None
+    assert second.decisions_extracted_at is not None
+
+
+def test_a_stopped_model_is_raised_for_a_retry(
+    db_session: Session, monkeypatch
+) -> None:
+    pr = make_pr(db_session)
+    use_model(monkeypatch, db_session, FlakyModel(down=True))
+
+    with pytest.raises(LanguageModelError):
+        decisions.run_extraction([pr.id])
+
+    assert pr.decisions_extracted_at is None
