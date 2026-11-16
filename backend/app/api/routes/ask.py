@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.lookups import embed_query, repository_id_for
+from app.api.security import limit_questions
 from app.db.session import get_session
 from app.embeddings.embedder import Embedder, get_embedder
 from app.generation.answer import answer_from_evidence
@@ -14,7 +15,9 @@ from app.schemas.answers import AskRequest, AskResponse
 router = APIRouter(tags=["ask"])
 
 
-@router.post("/ask", response_model=AskResponse)
+@router.post(
+    "/ask", response_model=AskResponse, dependencies=[Depends(limit_questions)]
+)
 def ask(
     body: AskRequest,
     session: Annotated[Session, Depends(get_session)],

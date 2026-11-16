@@ -31,6 +31,7 @@ useradd --system --create-home --shell /usr/sbin/nologin app
 git clone https://github.com/WhiteHacker000/SLOTH_INTELLIGENCE_SYSTEM.git /opt/decision-intelligence
 cd /opt/decision-intelligence
 cp .env.example .env   # set DATABASE_URL with $DB_PASSWORD; GITHUB_TOKEN is optional
+echo "ADMIN_API_KEY=$(openssl rand -hex 24)" >> .env   # keep this key to manage repositories
 
 cd backend
 python3 -m venv .venv
@@ -79,4 +80,4 @@ systemctl restart decision-intelligence
 
 ## Before sharing the URL
 
-There is no login yet. Anyone with the URL can import repositories and start syncs or extractions, which use the server's CPU. Share the URL only with the people who need it.
+With `ADMIN_API_KEY` set, visitors can browse decisions and ask questions, but importing, syncing and extracting need the key. Enter it in the admin key field on the page. Each visitor IP can ask `QUESTIONS_PER_MINUTE` questions a minute. Import and extract the repositories you want to show before sharing the URL, since extraction takes a few minutes.

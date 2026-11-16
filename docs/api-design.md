@@ -28,6 +28,9 @@
   - If no result scores at least 0.65 similarity, it returns `insufficient_evidence` without calling the model.
   - Citations are checked against the retrieved results. An answer with no real citation becomes `insufficient_evidence`.
   - Errors: `404` unknown repository, `503` embeddings or Ollama not available.
+- `GET /api/v1/admin` returns `key_required` and `key_valid` for the `X-Admin-Key` header sent, so the UI knows whether to show import and extract controls.
+- When `ADMIN_API_KEY` is set, registering, syncing and extracting need it in the `X-Admin-Key` header, else they return `401`.
+- Search and ask allow `QUESTIONS_PER_MINUTE` requests per client IP (default 10), then return `429` with a `Retry-After` header. Limits are kept in memory, so they reset on restart.
 - FastAPI generates OpenAPI at `/openapi.json` and interactive docs at `/docs`.
 
 ## Planned API areas
