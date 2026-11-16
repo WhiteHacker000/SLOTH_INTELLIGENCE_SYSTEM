@@ -1,0 +1,16 @@
+[Unit]
+Description=Decision Intelligence backend
+After=network-online.target postgresql.service ollama.service
+Wants=postgresql.service ollama.service
+
+[Service]
+User=app
+WorkingDirectory=/opt/decision-intelligence/backend
+Environment=FRONTEND_DIST=/opt/decision-intelligence/frontend/dist
+Environment=WARM_UP_MODELS=true
+# One worker: running extractions are tracked in this process's memory.
+ExecStart=/opt/decision-intelligence/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

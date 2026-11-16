@@ -55,6 +55,8 @@ class OllamaModel:
             "stream": False,
             # Deterministic output makes results repeatable and easier to evaluate.
             "options": {"temperature": 0},
+            # Stay in memory between questions instead of reloading every 5 minutes.
+            "keep_alive": "24h",
         }
         try:
             response = self._http.post("/api/chat", json=payload)

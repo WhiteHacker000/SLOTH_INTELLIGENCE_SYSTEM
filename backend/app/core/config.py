@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     gemma_model: str = "gemma3:4b"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    # Production only: folder of the built frontend, served from "/".
+    frontend_dist: Path | None = None
+    # Load both models when the server starts, so the first answer is not slow.
+    warm_up_models: bool = False
 
     model_config = SettingsConfigDict(
         env_file=REPOSITORY_ROOT / ".env",
