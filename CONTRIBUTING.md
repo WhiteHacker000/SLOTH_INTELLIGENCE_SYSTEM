@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping make historical project decisions easier to recover. The project is an early foundation: please keep pull requests focused and do not describe planned functionality as implemented.
+Thanks for helping make historical project decisions easier to recover. Please keep pull requests focused and do not describe planned functionality as implemented.
 
 ## Getting started
 
