@@ -2,7 +2,7 @@ from collections.abc import Callable
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.security import require_admin
@@ -15,7 +15,7 @@ from app.ingestion.github_client import (
     RepositoryNotFound,
     create_github_client,
 )
-from app.models import Repository, SyncStatus
+from app.models import JobKind, Repository, SyncStatus
 from app.schemas.decisions import DecisionRead, ExtractionStarted
 from app.schemas.repositories import (
     RepositoryCreate,
@@ -25,7 +25,12 @@ from app.schemas.repositories import (
     SyncStarted,
     TokenRequest,
 )
-from app.services import decisions as decision_service, repositories as service
+from app.services import (
+    decisions as decision_service,
+    jobs,
+    repositories as service,
+    worker,
+)
 
 router = APIRouter(prefix="/repositories", tags=["repositories"])
 
@@ -42,11 +47,11 @@ def get_github_factory() -> GitHubFactory:
 
 
 def get_sync_runner() -> SyncRunner:
-    return service.run_sync
+    return worker.queue_sync
 
 
 def get_extraction_runner() -> ExtractionRunner:
-    return decision_service.run_extraction
+    return worker.queue_extraction
 
 
 @router.post(
@@ -95,7 +100,6 @@ def get_repository(repository_id: UUID, session: SessionDep) -> RepositoryDetail
 def sync_repository(
     repository_id: UUID,
     session: SessionDep,
-    background: BackgroundTasks,
     run_sync: Annotated[SyncRunner, Depends(get_sync_runner)],
     body: TokenRequest | None = None,
 ) -> SyncStarted:
@@ -104,7 +108,7 @@ def sync_repository(
     # Show "running" straight away instead of after the background task starts.
     repository.sync_status = SyncStatus.RUNNING
     session.commit()
-    background.add_task(run_sync, repository.id, token)
+    run_sync(repository.id, token)
     return SyncStarted(repository_id=repository.id, message="Sync started")
 
 
@@ -122,14 +126,18 @@ def list_decisions(repository_id: UUID, session: SessionDep) -> list[DecisionRea
 def extract_repository_decisions(
     repository_id: UUID,
     session: SessionDep,
-    background: BackgroundTasks,
     run_extraction: Annotated[ExtractionRunner, Depends(get_extraction_runner)],
 ) -> ExtractionStarted:
     repository = _find(session, repository_id)
+    if jobs.has_active(session, repository.id, JobKind.EXTRACT):
+        return ExtractionStarted(
+            repository_id=repository.id,
+            threads=0,
+            message="Extraction is already running",
+        )
     threads = decision_service.threads_to_extract(session, repository.id)
     if threads:
-        decision_service.extracting.add(repository.id)
-        background.add_task(run_extraction, repository.id, threads)
+        run_extraction(repository.id, threads)
     message = "Extraction started" if threads else "All threads are already processed"
     return ExtractionStarted(
         repository_id=repository.id, threads=len(threads), message=message

@@ -17,8 +17,6 @@ logger = logging.getLogger(__name__)
 
 # About 15 seconds per thread on a laptop, so one run takes a few minutes.
 THREADS_PER_RUN = 15
-# Repositories with an extraction in progress. One server process, so memory is enough.
-extracting: set[UUID] = set()
 
 
 def list_decisions(session: Session, repository_id: UUID) -> list[DecisionRead]:
@@ -73,26 +71,22 @@ def threads_to_extract(
     )
 
 
-def run_extraction(repository_id: UUID, discussion_ids: list[UUID]) -> None:
-    """Extract decisions thread by thread in the background, saving each one."""
-    try:
-        _extract_threads(discussion_ids)
-    finally:
-        extracting.discard(repository_id)
+def run_extraction(discussion_ids: list[UUID]) -> None:
+    """Extract decisions thread by thread, saving each one.
 
-
-def _extract_threads(discussion_ids: list[UUID]) -> None:
+    Threads already done are skipped, so a retried job picks up where it
+    stopped. A model error is raised so the job queue can retry later.
+    """
     model, model_name = get_language_model(), get_settings().gemma_model
     with SessionLocal() as session:
         for discussion_id in discussion_ids:
             discussion = session.get(Discussion, discussion_id)
-            if discussion is None:
+            if discussion is None or discussion.decisions_extracted_at is not None:
                 continue
             try:
                 extract_decisions(session, model, model_name, discussion)
-            except LanguageModelError as error:
-                logger.warning("Extraction stopped: %s", error)
+            except LanguageModelError:
                 session.rollback()
-                return
+                raise
             discussion.decisions_extracted_at = datetime.now(UTC)
             session.commit()

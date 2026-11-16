@@ -8,7 +8,7 @@ User=app
 WorkingDirectory=/opt/decision-intelligence/backend
 Environment=FRONTEND_DIST=/opt/decision-intelligence/frontend/dist
 Environment=WARM_UP_MODELS=true
-# One worker: running extractions are tracked in this process's memory.
+# One process: it runs the job worker, and pasted GitHub tokens stay in its memory.
 ExecStart=/opt/decision-intelligence/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
 Restart=on-failure
 

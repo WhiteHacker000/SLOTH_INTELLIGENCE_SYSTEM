@@ -49,11 +49,15 @@ def has_active(session: Session, repository_id: UUID, kind: JobKind) -> bool:
     )
 
 
-def claim_next(session: Session) -> Job | None:
-    """Take the oldest job that is due, skipping rows another worker holds."""
+def claim_next(session: Session, kind: JobKind) -> Job | None:
+    """Take the oldest due job of this kind, skipping rows another worker holds."""
     job = session.scalars(
         select(Job)
-        .where(Job.status == JobStatus.QUEUED, Job.run_after <= datetime.now(UTC))
+        .where(
+            Job.kind == kind,
+            Job.status == JobStatus.QUEUED,
+            Job.run_after <= datetime.now(UTC),
+        )
         .order_by(Job.created_at)
         .limit(1)
         .with_for_update(skip_locked=True)
@@ -82,8 +86,14 @@ def finish(session: Session, job: Job, error: str | None = None) -> None:
 
 
 def recover_interrupted(session: Session) -> int:
-    """Put jobs left running by a crash or restart back in the queue."""
+    """Put jobs left running by a crash or restart back in the queue.
+
+    A restart is not the job's fault, so it does not use up an attempt.
+    """
     stuck = list(session.scalars(select(Job).where(Job.status == JobStatus.RUNNING)))
     for job in stuck:
-        finish(session, job, "Interrupted by a server restart")
+        job.status = JobStatus.QUEUED
+        job.attempts -= 1
+        job.last_error = "Interrupted by a server restart"
+        job.run_after = datetime.now(UTC)
     return len(stuck)

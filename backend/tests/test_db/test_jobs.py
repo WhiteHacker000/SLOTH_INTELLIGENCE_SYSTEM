@@ -7,9 +7,9 @@ from app.models import JobKind, JobStatus, Repository
 from app.services import jobs
 
 
-def repo(session: Session) -> Repository:
+def repo(session: Session, full_name: str = "a/b") -> Repository:
     return crud.create_repository(
-        session, full_name="a/b", html_url="https://github.com/a/b"
+        session, full_name=full_name, html_url=f"https://github.com/{full_name}"
     )
 
 
@@ -30,15 +30,18 @@ def test_claim_takes_the_oldest_due_job(db_session: Session) -> None:
     later = jobs.enqueue(db_session, JobKind.SYNC, r.id)
     assert later is not None
     later.run_after = datetime.now(UTC) + timedelta(minutes=5)
-    due = jobs.enqueue(db_session, JobKind.EXTRACT, r.id)
+    other = repo(db_session, "a/c")
+    due = jobs.enqueue(db_session, JobKind.SYNC, other.id)
+    extract = jobs.enqueue(db_session, JobKind.EXTRACT, r.id)
 
-    claimed = jobs.claim_next(db_session)
+    claimed = jobs.claim_next(db_session, JobKind.SYNC)
 
     assert claimed is due
     assert claimed is not None
     assert claimed.status is JobStatus.RUNNING
     assert claimed.attempts == 1
-    assert jobs.claim_next(db_session) is None
+    assert jobs.claim_next(db_session, JobKind.SYNC) is None
+    assert jobs.claim_next(db_session, JobKind.EXTRACT) is extract
 
 
 def test_failed_jobs_retry_later_then_give_up(db_session: Session) -> None:
@@ -47,7 +50,7 @@ def test_failed_jobs_retry_later_then_give_up(db_session: Session) -> None:
 
     for attempt in range(1, jobs.MAX_ATTEMPTS + 1):
         job.run_after = datetime.now(UTC)
-        assert jobs.claim_next(db_session) is job
+        assert jobs.claim_next(db_session, JobKind.SYNC) is job
         jobs.finish(db_session, job, "Ollama is not running")
         if attempt < jobs.MAX_ATTEMPTS:
             assert job.status is JobStatus.QUEUED
@@ -65,7 +68,7 @@ def test_pasted_token_stays_out_of_the_database(db_session: Session) -> None:
     assert jobs.token_for(job) == "ghp_x"
     assert "ghp_x" not in str(job.payload)
 
-    jobs.claim_next(db_session)
+    jobs.claim_next(db_session, JobKind.SYNC)
     jobs.finish(db_session, job)
 
     assert job.status is JobStatus.DONE
@@ -74,9 +77,11 @@ def test_pasted_token_stays_out_of_the_database(db_session: Session) -> None:
 
 def test_jobs_cut_off_by_a_restart_go_back_in_the_queue(db_session: Session) -> None:
     job = jobs.enqueue(db_session, JobKind.EXTRACT, repo(db_session).id)
-    jobs.claim_next(db_session)
+    jobs.claim_next(db_session, JobKind.EXTRACT)
 
     assert jobs.recover_interrupted(db_session) == 1
     assert job is not None
     assert job.status is JobStatus.QUEUED
+    assert job.attempts == 0
     assert job.last_error == "Interrupted by a server restart"
+    assert jobs.claim_next(db_session, JobKind.EXTRACT) is job
