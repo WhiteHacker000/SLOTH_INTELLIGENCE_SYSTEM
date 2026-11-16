@@ -47,6 +47,14 @@ class EvidenceRead(BaseModel):
     source_url: str
 
 
+class CodeReference(BaseModel):
+    """A file a decision touched, with the line when a review pointed at one."""
+
+    path: str
+    line: int | None = None
+    url: str
+
+
 class DecisionRead(BaseModel):
     """What the decision explorer shows."""
 
@@ -56,6 +64,7 @@ class DecisionRead(BaseModel):
     rationale: list[str]
     alternatives: list[RejectedAlternative]
     evidence: list[EvidenceRead]
+    code: list[CodeReference] = []
 
 
 class ExtractionStarted(BaseModel):

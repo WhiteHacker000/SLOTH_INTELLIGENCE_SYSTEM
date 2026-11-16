@@ -16,6 +16,7 @@
   - Check progress with `GET /api/v1/repositories/{id}`. Counts update while the sync runs, since progress is saved every 100 rows.
   - `sync_status` is one of `never_synced`, `running`, `paused`, `failed`, `synced`. `paused` means the rate limit ran out: `last_sync_error` asks for a token and the next sync continues from the last checkpoint.
 - `GET /api/v1/repositories/{id}/decisions` lists extracted decisions with `decision`, `rationale`, `alternatives` and `evidence` (quote plus GitHub link).
+  - `code` lists the files the decision touched: files changed by the PRs its evidence comes from, and lines that review comments used as evidence point at. Each has a GitHub link; lines link to the exact commit.
 - `POST /api/v1/repositories/{id}/extract` queues Gemma on the 15 most-discussed threads not processed yet, and returns `202` with how many threads it picked. Run it again for the next 15. Each thread takes about 15 seconds. While an extraction is queued or running it returns `threads: 0` and "Extraction is already running". If Ollama fails, the job is retried later and skips threads already done.
 - `POST /api/v1/search` returns the discussion chunks closest in meaning to a question.
   - Body: `{"query": "Why was X rejected?", "repository_full_name": "owner/name", "source_types": ["issue", "review"], "limit": 5}`. Only `query` is required; `limit` is 1 to 20.
