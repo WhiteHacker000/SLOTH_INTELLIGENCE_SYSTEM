@@ -26,6 +26,7 @@ const decision = {
   rationale: ["End of life.", "End of life."],
   alternatives: [],
   evidence: [{ excerpt: "end of life", source_url: "https://github.com/pallets/click/pull/1" }],
+  code: [],
 };
 
 let routes: Record<string, unknown>;

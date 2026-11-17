@@ -1,0 +1,23 @@
+name: Decision context
+description: Comment on a pull request with past decisions about the files it changes.
+inputs:
+  server-url:
+    description: Base URL of a Decision Intelligence server, e.g. https://decisions.example.com
+    required: true
+  repository:
+    description: Repository name as imported on the server. Defaults to this repository.
+    required: false
+    default: ""
+  github-token:
+    description: Token used to read the PR's files and write the comment.
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: python3 "$GITHUB_ACTION_PATH/comment.py"
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        DECISION_SERVER_URL: ${{ inputs.server-url }}
+        DECISION_REPOSITORY: ${{ inputs.repository }}

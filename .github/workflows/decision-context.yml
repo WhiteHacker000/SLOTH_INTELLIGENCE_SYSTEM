@@ -1,0 +1,21 @@
+name: Decision context
+
+# pull_request_target lets the bot comment on PRs from forks. It is safe here
+# because nothing checks out or runs the pull request's code.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  comment:
+    # Set the DECISION_SERVER_URL repository variable to turn this on.
+    if: vars.DECISION_SERVER_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: WhiteHacker000/SLOTH_INTELLIGENCE_SYSTEM/.github/actions/decision-context@main
+        with:
+          server-url: ${{ vars.DECISION_SERVER_URL }}

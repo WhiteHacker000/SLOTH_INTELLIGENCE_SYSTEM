@@ -42,6 +42,8 @@ export interface Decision {
   rationale: string[];
   alternatives: { approach: string; rejection_reason: string }[];
   evidence: { excerpt: string; source_url: string }[];
+  /** Files the decision touched; `line` is set when a review comment pointed at one. */
+  code: { path: string; line: number | null; url: string }[];
 }
 
 export interface Citation {
