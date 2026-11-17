@@ -1,82 +1,67 @@
 # Open-Source Decision Intelligence and Knowledge Recovery
 
-An open-source project to recover technical decisions and their rationale from GitHub discussions. The planned system will answer contributor questions with evidence-grounded explanations and direct links to the original discussions.
+Projects make many technical decisions in issue and pull request threads, and few of them end up in a design doc. When the people who made them leave, the reasons are hard to find.
 
-**Current status:** this repository contains the initial project foundation, configuration, API health endpoint, typed data contracts, and smoke tests. GitHub synchronization, database persistence, model inference, retrieval, and decision answering are not implemented yet.
+This project imports a public GitHub repository, finds the decisions in its discussions, and answers questions like "why was X rejected?" with links to the exact comments that support the answer.
+
+## What it does
+
+- **Import** issues, pull requests, comments and code reviews from any public GitHub repository. Later syncs only fetch what changed. If the GitHub rate limit runs out, the import pauses and continues on the next sync.
+- **Extract decisions** with a local LLM (Gemma 3 4B through Ollama). Each decision has the decision itself, the rationale, rejected alternatives with the reason they were rejected, and evidence quotes.
+- **Ask questions** in plain language. The answer is built only from retrieved discussion text and cites its sources.
+- **Browse** decisions per repository in a web UI, with every quote linked back to GitHub.
+
+## How it avoids made-up answers
+
+LLMs invent things, so the pipeline checks the model instead of trusting it:
+
+- Every evidence quote must appear word for word in the message it cites, or it is dropped. A decision with no real quote is not saved.
+- A decision found only in the opening post is kept as `proposed`, never `accepted`, since nobody else has agreed to it yet.
+- Model output must match a JSON schema and is validated again with Pydantic. Bad output is retried once.
+- Discussion text is passed to the model as data, with an instruction to ignore any commands inside it.
+- Questions with no evidence above a similarity threshold get an "insufficient evidence" reply without calling the model. Answer citations that point to sources the model was not given are removed.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    GH[GitHub REST API] --> ING[Import and sync]
+    ING --> PG[(PostgreSQL)]
+    PG --> CH[Clean and chunk]
+    CH --> EMB[Embed<br/>bge-small-en-v1.5]
+    EMB --> VEC[(pgvector)]
+    PG --> EXT[Extract decisions<br/>Gemma 3 4B]
+    EXT --> PG
+    UI[React UI] --> API[FastAPI]
+    API --> VEC
+    API --> PG
+    API --> ANS[Grounded answer<br/>Gemma 3 4B]
+```
+
+The backend is one FastAPI app split into modules (ingestion, processing, embeddings, extraction, retrieval, generation). PostgreSQL with pgvector holds both the data and the vectors, so there is no separate vector database. Both models run locally and no data leaves the machine.
+
+More detail: [architecture](docs/architecture.md), [AI pipeline](docs/ai-pipeline.md), [API](docs/api-design.md), [database schema](docs/database-schema.md).
 
 ## Technology
 
+- **Backend:** Python 3.11+, FastAPI, Pydantic, SQLAlchemy, Alembic
+- **Storage:** PostgreSQL with pgvector
+- **AI:** Gemma 3 4B through Ollama, `BAAI/bge-small-en-v1.5` embeddings
 - **Frontend:** React, TypeScript, Vite, Tailwind CSS v4, shadcn/ui
-- **Backend:** Python, FastAPI, Pydantic
-- **AI (planned):** Gemma 3 4B through Ollama; `BAAI/bge-small-en-v1.5` for embeddings; retrieval-augmented generation (RAG)
-- **Storage (planned):** PostgreSQL and pgvector
-- **Source integration (planned):** GitHub REST API
-- **Tests and CI:** Pytest, Vitest, React Testing Library, GitHub Actions
+- **Tests and CI:** Pytest against a real PostgreSQL with pgvector, Vitest, React Testing Library, GitHub Actions
 
-The backend is one modular FastAPI application (a modular monolith), not a collection of services. No Docker, Redis, Celery, separate vector store, or AI orchestration framework is part of this foundation.
-
-## Repository layout
-
-```text
-.
-├── backend/
-│   ├── app/
-│   │   ├── api/routes/       # HTTP endpoints and route composition
-│   │   ├── core/             # Settings and cross-cutting configuration
-│   │   ├── db/               # SQLAlchemy base, engine, and sessions
-│   │   ├── models/           # PostgreSQL persistence models, including pgvector
-│   │   ├── schemas/          # Validated API and domain data contracts
-│   │   ├── ingestion/        # GitHub import and synchronization boundary
-│   │   ├── processing/       # Discussion normalization and chunking boundary
-│   │   ├── embeddings/       # Embedding-model integration boundary
-│   │   ├── extraction/       # Structured decision extraction boundary
-│   │   ├── retrieval/        # Semantic search and evidence selection boundary
-│   │   ├── generation/       # Grounded answer generation boundary
-│   │   ├── services/         # Use-case orchestration within the monolith
-│   │   └── main.py           # FastAPI application entry point
-│   ├── tests/                # Unit and API tests; no external services required
-│   ├── pyproject.toml
-│   ├── requirements.txt
-│   └── requirements-dev.txt
-├── frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── components/       # Shared interface components
-│   │   ├── features/         # Future repository, decision, and Q&A features
-│   │   ├── pages/            # Page-level composition
-│   │   ├── types/            # Shared frontend domain types
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── tests/
-│   └── package.json
-├── evaluation/               # Future datasets and retrieval/answer metrics
-├── docs/                     # Architecture, API, database, and AI pipeline notes
-├── .github/workflows/        # CI
-├── .env.example
-├── CONTRIBUTING.md
-├── HACKATHON.md
-├── SECURITY.md
-└── LICENSE
-```
-
-Module directories are boundaries for future work, not claims that those features already exist. See [docs/architecture.md](docs/architecture.md) for the planned responsibilities.
-
-## Development setup
+## Getting started
 
 ### Prerequisites
 
 - Python 3.11 or newer
-- Node.js 22 or newer and npm
-- For future database-backed work: PostgreSQL with the pgvector extension available
-- For future local inference: Ollama with the configured models pulled
-
-The current smoke tests do not require PostgreSQL, GitHub credentials, Ollama, or downloaded models.
+- Node.js 22 or newer
+- PostgreSQL with the pgvector extension
+- [Ollama](https://ollama.com) with the model pulled: `ollama pull gemma3:4b` (about 3.4 GB)
 
 ### Environment
 
-Copy `.env.example` to `.env` at the repository root and adjust local values if needed. Public GitHub repositories can be read without a token; `GITHUB_TOKEN` is optional and only increases API rate limits. Keep credentials in `.env`, which is ignored by Git.
-
-The default PostgreSQL URL is a local placeholder, not a working credential. The health endpoint does not connect to the database.
+Copy `.env.example` to `.env` at the repository root and set `DATABASE_URL`. `GITHUB_TOKEN` is optional: public repositories work without it, but a token raises the rate limit from 60 to 5,000 requests an hour. A token can also be pasted in the UI for a single sync; it is not stored.
 
 ### Backend
 
@@ -85,21 +70,12 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
-python -m pip install -r requirements-embeddings.txt  # optional, for search
+python -m pip install -r requirements-embeddings.txt  # search and Q&A
+alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-The API health check is at `http://localhost:8000/api/v1/health`. FastAPI provides interactive OpenAPI documentation at `http://localhost:8000/docs` and the schema at `http://localhost:8000/openapi.json`.
-
-Run backend lint and tests from `backend/`:
-
-```bash
-ruff check .
-ruff format --check .
-pytest
-```
-
-`LOG_LEVEL` in `.env` controls application log verbosity.
+Interactive API docs are at `http://localhost:8000/docs`.
 
 ### Frontend
 
@@ -109,40 +85,48 @@ npm ci
 npm run dev
 ```
 
-Run frontend lint, tests, and a production build from `frontend/`:
+Open `http://localhost:5173`. Vite forwards `/api` to the backend.
+
+### Try it
+
+1. Import a small repository, for example `pallets/itsdangerous`, then click **Sync**.
+2. When the sync completes, click **Extract decisions**. Each run processes the 15 most-discussed threads, about 15 seconds each.
+3. Select the repository to browse its decisions, or ask a question such as "Why was this dependency dropped?".
+
+## Tests
 
 ```bash
-npm run lint
-npm test
-npm run build
+cd backend && ruff check . && ruff format --check . && pytest
+cd frontend && npm run lint && npm test && npm run build
 ```
 
-During development, Vite proxies `/api` requests to the backend at `http://localhost:8000`, so the frontend needs no CORS configuration.
-
-The initial screen is intentionally a foundation/status page; it does not yet call the backend or claim that repository import, decisions, or question answering work.
+Database tests need `TEST_DATABASE_URL` pointing to an empty database with pgvector. They do not need GitHub, Ollama or the embedding model: CI uses fakes for those.
 
 ## Deployment
 
 See [docs/deployment.md](docs/deployment.md) for running everything on one Ubuntu server without Docker.
 
-## Configuration and dependencies
+## Known limitations
 
-Backend runtime dependencies are listed in `backend/requirements.txt`; test-only dependencies are in `backend/requirements-dev.txt`. `backend/pyproject.toml` configures the package and pytest. Frontend dependencies and scripts are managed with npm and `frontend/package-lock.json`.
+- Only GitHub issues and pull requests are imported. Forums, GitHub Discussions and design documents are not.
+- Decisions are not yet linked to source files, so they cannot be shown on new pull requests.
+- Long threads are trimmed to fit the model's context, which can cut off the final comments.
+- A 4B model splits some decisions into several and marks many as `proposed`.
+- There is no evaluation dataset yet, so extraction and answer quality are not measured.
 
-SQLAlchemy, Psycopg 3, and pgvector handle PostgreSQL persistence, and Alembic manages schema migrations. Run `alembic upgrade head` from `backend/` after setting `DATABASE_URL`. See [docs/database-schema.md](docs/database-schema.md). The frontend's `components.json` configures shadcn/ui generation; shadcn components are added as needed rather than installing a large UI bundle up front.
+## Roadmap
 
-## Planned implementation stages
+1. Read long threads fully and run background jobs from a database queue.
+2. Link decisions to the files and lines they affect.
+3. Comment on new pull requests with related past decisions.
+4. Build an evaluation set from PEPs, Rust RFCs and labelled GitHub threads.
+5. Combine keyword and vector search, and merge duplicate decisions across threads.
+6. Let maintainers verify or edit decisions, and export them as ADRs.
 
-1. Import public GitHub issues, pull requests, comments, and reviews; preserve their URLs, IDs, timestamps, and repository context.
-2. Normalize discussions and define stable chunk/evidence boundaries; support incremental synchronization later.
-3. Persist repositories, discussions, decisions, evidence, and 384-dimensional embeddings in PostgreSQL/pgvector.
-4. Extract proposed, accepted, rejected, and unresolved decisions without treating a merged pull request as proof of a decision.
-5. Retrieve relevant evidence and use Gemma 3 via Ollama to answer with source citations, including explicit insufficient- or conflicting-evidence responses.
-6. Build repository dashboard/import, decision explorer/details, semantic Q&A, and loading/error/empty states in the frontend.
-7. Add evaluation datasets and measurable retrieval and answer-quality checks.
+## Contributing
 
-More detail: [database schema](docs/database-schema.md), [AI pipeline](docs/ai-pipeline.md), and [API design](docs/api-design.md).
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request.
 
-## Contributions
+## License
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request. Changes should be focused, tested, and clear about what is implemented versus planned.
+See [LICENSE](LICENSE).

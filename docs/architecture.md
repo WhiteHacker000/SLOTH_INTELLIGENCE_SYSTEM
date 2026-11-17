@@ -2,9 +2,9 @@
 
 ## Current state
 
-The repository is one Git project with independently run `frontend/` and `backend/` applications. The backend is a **modular monolith**: one FastAPI process, with API, configuration, persistence, and future domain capabilities separated into packages. The current backend exposes only a health endpoint and validated data contracts. The frontend is a static foundation page.
+The repository is one Git project with independently run `frontend/` and `backend/` applications. The backend is a **modular monolith**: one FastAPI process, with API, configuration, persistence, and domain capabilities separated into packages. Import, chunking, embeddings, decision extraction, search and grounded answers all work end to end, and the frontend covers import, the repository dashboard, the decision explorer and Q&A.
 
-## Planned request and data flow
+## Request and data flow
 
 ```text
 React UI
@@ -28,7 +28,7 @@ GitHub discussions remain the source of evidence. A decision is not inferred sol
 | `db/` | SQLAlchemy metadata, engine, and session lifecycle |
 | `models/` | PostgreSQL entities for repositories, discussions, decisions, evidence, and embeddings |
 | `schemas/` | Pydantic request/response and domain validation contracts |
-| `ingestion/` | GitHub REST API access, source preservation, and future incremental sync |
+| `ingestion/` | GitHub REST API access, source preservation, and incremental sync |
 | `processing/` | Normalize source text and create retrieval chunks |
 | `embeddings/` | Independently configured embedding model integration |
 | `extraction/` | Structured decision extraction and validation |
@@ -36,11 +36,11 @@ GitHub discussions remain the source of evidence. A decision is not inferred sol
 | `generation/` | Evidence-grounded answers and uncertainty handling |
 | `services/` | Orchestrate use cases without creating separately deployed services |
 
-These are module boundaries, not completed implementations. Keep routes thin and do not add repository abstractions or service layers until a use case needs them.
+Keep routes thin and do not add repository abstractions or service layers until a use case needs them.
 
-## Frontend plan
+## Frontend
 
-Use a small shared component layer and organize substantial UI by feature as it arrives: repository dashboard/import, decision explorer/details, and semantic Q&A. Loading, error, empty, insufficient-evidence, and contradictory-evidence states are part of those features. Avoid adding routing until multiple navigable screens require it.
+A small shared component layer, with UI organized by feature: repository import and dashboard, decision explorer, and Q&A. Each feature handles its own loading, error, empty and insufficient-evidence states. There is no routing yet; add it when there are several screens to move between.
 
 ## External systems
 

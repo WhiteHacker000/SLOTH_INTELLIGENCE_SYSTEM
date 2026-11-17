@@ -1,6 +1,6 @@
 # AI pipeline
 
-Steps 1, 2 and 4 are implemented. Decision extraction, retrieval, answers and evaluation are planned.
+Steps 1 to 6 are implemented. Evaluation is planned.
 
 1. **Ingest:** retrieve repository issues, pull requests, comments, and reviews from the GitHub REST API; preserve IDs, URLs, timestamps, and repository metadata.
 2. **Normalize:** clean text without discarding authorship or source relationships, then chunk discussions with stable references.
