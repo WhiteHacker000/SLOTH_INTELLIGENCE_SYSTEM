@@ -1,0 +1,30 @@
+{"repository": "pallets/itsdangerous", "question": "If a token's header names a different signing algorithm, will the library switch to it?", "expected_threads": [128]}
+{"repository": "pallets/itsdangerous", "question": "Is HMAC with SHA-1 actually unsafe, and should I worry that it is the default?", "expected_threads": [147, 134]}
+{"repository": "pallets/itsdangerous", "question": "Can I use blake2 or pass extra options to the hash function used for signing?", "expected_threads": [134]}
+{"repository": "pallets/itsdangerous", "question": "Does max_age count from when a token was first used or from when it was created?", "expected_threads": [97]}
+{"repository": "pallets/itsdangerous", "question": "Editing the last character of a signature still verifies in my tests. Is that a bug?", "expected_threads": [28, 27]}
+{"repository": "pallets/itsdangerous", "question": "How can I tell how long a token has left before it expires?", "expected_threads": [43]}
+{"repository": "pallets/itsdangerous", "question": "Why do I randomly get BadTimeSignature when my separator is a dash?", "expected_threads": [62]}
+{"repository": "pallets/itsdangerous", "question": "Can I still read the expiry time from a token whose signature is invalid?", "expected_threads": [123]}
+{"repository": "pallets/itsdangerous", "question": "Can max_age be given as a timedelta instead of a number of seconds?", "expected_threads": [185]}
+{"repository": "pallets/itsdangerous", "question": "After upgrading to 1.0 my old signed strings no longer load. What happened?", "expected_threads": [109, 111, 112]}
+{"repository": "pallets/itsdangerous", "question": "The URL safe serializer can return bytes although its type hints say str. Is that expected?", "expected_threads": [410]}
+{"repository": "pallets-eco/blinker", "question": "Which old Python versions stopped being supported, and why?", "expected_threads": [41]}
+{"repository": "pallets-eco/blinker", "question": "Who maintains blinker now, and where did the repository move?", "expected_threads": [45, 36]}
+{"repository": "pallets-eco/blinker", "question": "After upgrading to 1.6, Quart apps fail with 'Cannot send to a coroutine function'. Why?", "expected_threads": [91]}
+{"repository": "pallets-eco/blinker", "question": "Why did weak references break for classes that define im_self on Python 3?", "expected_threads": [31]}
+{"repository": "pallets-eco/blinker", "question": "Why was there no new release on PyPI for years after 1.4?", "expected_threads": [36, 45]}
+{"repository": "pallets/markupsafe", "question": "Why does escaping non-ASCII text give garbled characters on PyPy?", "expected_threads": [176]}
+{"repository": "pallets/markupsafe", "question": "Why not ship one abi3 wheel instead of a wheel for every Python version?", "expected_threads": [175, 186]}
+{"repository": "pallets/markupsafe", "question": "Jinja fails to import soft_unicode after upgrading. Why was it removed?", "expected_threads": [286, 282, 284]}
+{"repository": "pallets/markupsafe", "question": "pip cannot install it on Windows. Are there prebuilt packages?", "expected_threads": [67, 45]}
+{"repository": "pallets/markupsafe", "question": "Why does the memory leak test fail on PyPy?", "expected_threads": [39]}
+{"repository": "pallets/markupsafe", "question": "escape() breaks with str subclasses that override __str__, like Django's SafeString.", "expected_threads": [472]}
+{"repository": "pallets/markupsafe", "question": "Since 3.0, html.escape on an object with __html__ behaves differently. Is that a bug?", "expected_threads": [481]}
+{"repository": "pallets/markupsafe", "question": "The leak test fails when Python is built with the experimental JIT.", "expected_threads": [445]}
+{"repository": "pallets/markupsafe", "question": "Does the C extension support multi-phase module initialisation?", "expected_threads": [495]}
+{"repository": "pallets/markupsafe", "question": "Are there wheels for ARM64 Linux?", "expected_threads": [173]}
+{"repository": "pallets/markupsafe", "question": "How fast was the first Rust version of escape compared to the pure Python one?", "expected_threads": [349]}
+{"repository": "pallets/markupsafe", "question": "Why was the project logo redesigned?", "expected_threads": [], "answerable": false}
+{"repository": "pallets-eco/blinker", "question": "Why does blinker store signals in Redis?", "expected_threads": [], "answerable": false}
+{"repository": "pallets/itsdangerous", "question": "How do I set up OAuth login with Google?", "expected_threads": [], "answerable": false}
