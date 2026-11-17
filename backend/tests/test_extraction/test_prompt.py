@@ -1,6 +1,12 @@
 from uuid import uuid4
 
-from app.extraction.prompt import MAX_THREAD_CHARS, build_prompt, build_thread
+from app.extraction.prompt import (
+    EXAMPLE_PLACEHOLDER,
+    MAX_THREAD_CHARS,
+    SYSTEM_PROMPT,
+    build_prompt,
+    build_thread,
+)
 from app.models import Comment, Discussion
 
 URL = "https://github.com/a/b/pull/7"
@@ -70,3 +76,10 @@ def test_short_threads_have_no_gap_note() -> None:
     pr, comments = thread("Proposal", "Agreed", "Merged")
 
     assert "left out" not in build_prompt(pr, build_thread(pr, comments))
+
+
+def test_prompt_example_uses_a_placeholder_not_a_real_tool() -> None:
+    # A real name in the example (it used to be ruff) gets copied into
+    # decisions for threads that never mention it.
+    assert EXAMPLE_PLACEHOLDER in SYSTEM_PROMPT.lower()
+    assert "ruff" not in SYSTEM_PROMPT.lower()
