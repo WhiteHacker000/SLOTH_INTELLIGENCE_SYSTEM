@@ -39,6 +39,21 @@ def comment_values(item: dict[str, Any], kind: CommentKind) -> dict[str, Any]:
         # Reviews only have submitted_at.
         "created_at": _timestamp(item.get("created_at") or item["submitted_at"]),
         "updated_at": _timestamp(item.get("updated_at")),
+        # Only review comments have these. The original line and commit always
+        # exist together, while the current line is gone once code moves on.
+        "path": item.get("path"),
+        "line": item.get("original_line") or item.get("line"),
+        "commit_sha": item.get("original_commit_id") or item.get("commit_id"),
+    }
+
+
+def file_values(item: dict[str, Any]) -> dict[str, Any]:
+    """Map an item from a pull request's files endpoint."""
+    return {
+        "path": item["filename"],
+        "status": item["status"],
+        "additions": item.get("additions") or 0,
+        "deletions": item.get("deletions") or 0,
     }
 
 

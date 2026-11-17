@@ -60,6 +60,8 @@ class OllamaModel:
         }
         try:
             response = self._http.post("/api/chat", json=payload)
+        except httpx.TimeoutException as error:
+            raise LanguageModelError("Ollama took too long to answer") from error
         except httpx.TransportError as error:
             raise LanguageModelError("Ollama is not running") from error
         if response.status_code == 404:
@@ -93,7 +95,7 @@ def generate_validated(
         except (InvalidModelOutput, ValidationError) as error:
             logger.warning("Model output rejected (attempt %d): %s", attempt, error)
             if attempt == attempts:
-                raise LanguageModelError(
+                raise InvalidModelOutput(
                     "The model did not return valid output"
                 ) from error
     raise AssertionError("unreachable")

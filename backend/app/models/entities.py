@@ -138,6 +138,28 @@ class Comment(Base):
     source_url: Mapped[str] = mapped_column(String(2048))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Review comments point at a line of code in a specific commit.
+    path: Mapped[str | None] = mapped_column(String(1024))
+    line: Mapped[int | None] = mapped_column(Integer)
+    commit_sha: Mapped[str | None] = mapped_column(String(64))
+
+
+class DiscussionFile(Base):
+    """A file changed by a pull request."""
+
+    __tablename__ = "discussion_files"
+    __table_args__ = (
+        UniqueConstraint("discussion_id", "path", name="uq_discussion_file"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    discussion_id: Mapped[UUID] = mapped_column(
+        ForeignKey("discussions.id", ondelete="CASCADE"), index=True
+    )
+    path: Mapped[str] = mapped_column(String(1024), index=True)
+    status: Mapped[str] = mapped_column(String(32))
+    additions: Mapped[int] = mapped_column(Integer, default=0)
+    deletions: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class DocumentChunk(Base):

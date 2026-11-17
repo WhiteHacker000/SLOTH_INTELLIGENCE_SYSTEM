@@ -9,7 +9,11 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.extraction.extractor import extract_decisions
-from app.generation.llm import LanguageModelError, get_language_model
+from app.generation.llm import (
+    InvalidModelOutput,
+    LanguageModelError,
+    get_language_model,
+)
 from app.models import Comment, Decision, DecisionEvidence, Discussion
 from app.schemas.decisions import DecisionRead, EvidenceRead
 
@@ -75,7 +79,8 @@ def run_extraction(discussion_ids: list[UUID]) -> None:
     """Extract decisions thread by thread, saving each one.
 
     Threads already done are skipped, so a retried job picks up where it
-    stopped. A model error is raised so the job queue can retry later.
+    stopped. A thread the model cannot handle is skipped; if the model is
+    down or too slow, the error is raised so the job queue can retry later.
     """
     model, model_name = get_language_model(), get_settings().gemma_model
     with SessionLocal() as session:
@@ -85,6 +90,9 @@ def run_extraction(discussion_ids: list[UUID]) -> None:
                 continue
             try:
                 extract_decisions(session, model, model_name, discussion)
+            except InvalidModelOutput as error:
+                logger.warning("Skipped thread #%d: %s", discussion.number, error)
+                session.rollback()
             except LanguageModelError:
                 session.rollback()
                 raise

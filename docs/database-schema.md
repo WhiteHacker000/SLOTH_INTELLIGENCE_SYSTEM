@@ -6,7 +6,8 @@ Models live in `backend/app/models/entities.py`. Migrations live in `backend/mig
 | --- | --- | --- |
 | `repositories` | A connected GitHub repository and its sync state | `full_name` (unique), `github_id`, `sync_status`, `last_synced_at`, `last_sync_error` |
 | `discussions` | An issue or pull request | `kind`, `number` (unique per repository), `state`, `author`, `labels`, `source_url`, `merged_at` |
-| `comments` | Issue comments, PR review comments, and PR reviews | `kind`, `github_id` (unique per kind), `author`, `source_url` |
+| `comments` | Issue comments, PR review comments, and PR reviews | `kind`, `github_id` (unique per kind), `author`, `source_url`, and for review comments `path`, `line`, `commit_sha` |
+| `discussion_files` | Files a pull request changed | `discussion_id`, `path` (unique per PR), `status`, `additions`, `deletions` |
 | `document_chunks` | Searchable text with its embedding | `discussion_id`, `comment_id` (NULL for the issue/PR body), `ordinal`, `source_url`, `embedding vector(384)` |
 | `decisions` | An extracted technical decision | `title`, `decision`, `rationale`, `alternatives`, `trade_offs`, `status`, `confidence`, `extraction_model` |
 | `decision_evidence` | Links a decision to the discussion or comment that supports it | `decision_id`, `discussion_id`, `comment_id`, `excerpt`, `source_url` |

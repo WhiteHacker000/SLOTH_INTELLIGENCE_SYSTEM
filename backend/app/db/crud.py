@@ -2,11 +2,11 @@ from datetime import UTC, datetime
 from typing import Any, TypeVar
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.models import Comment, Discussion, Repository
+from app.models import Comment, Discussion, DiscussionFile, Repository
 
 ModelT = TypeVar("ModelT")
 
@@ -67,6 +67,16 @@ def upsert_comment(session: Session, discussion_id: UUID, **values: Any) -> Comm
         set_={column: statement.excluded[column] for column in values},
     )
     return _upsert(session, Comment, statement)
+
+
+def replace_discussion_files(
+    session: Session, discussion_id: UUID, files: list[dict[str, Any]]
+) -> None:
+    session.execute(
+        delete(DiscussionFile).where(DiscussionFile.discussion_id == discussion_id)
+    )
+    session.add_all(DiscussionFile(discussion_id=discussion_id, **f) for f in files)
+    session.flush()
 
 
 def _upsert(session: Session, model: type[ModelT], statement: Any) -> ModelT:

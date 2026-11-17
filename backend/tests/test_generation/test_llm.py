@@ -74,3 +74,11 @@ def test_ollama_not_running() -> None:
 
     with pytest.raises(LanguageModelError, match="not running"):
         generate_validated(ollama(handler), "s", "p", Answer)
+
+
+def test_slow_ollama_is_not_reported_as_stopped() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("slow", request=request)
+
+    with pytest.raises(LanguageModelError, match="took too long"):
+        generate_validated(ollama(handler), "s", "p", Answer)

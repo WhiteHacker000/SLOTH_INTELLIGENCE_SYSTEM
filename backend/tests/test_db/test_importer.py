@@ -1,12 +1,19 @@
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.db import crud
 from app.ingestion.github_client import RateLimit, RateLimitExceeded, RepositoryNotFound
 from app.ingestion.importer import RATE_LIMITED_ERROR, SAVE_EVERY, import_repository
-from app.models import Comment, CommentKind, Discussion, DiscussionKind, SyncStatus
+from app.models import (
+    Comment,
+    CommentKind,
+    Discussion,
+    DiscussionFile,
+    DiscussionKind,
+    SyncStatus,
+)
 
 API = "https://api.github.com/repos/a/b"
 WEB = "https://github.com/a/b"
@@ -75,7 +82,18 @@ def github_with_data(fail: str = "") -> FakeGitHub:
                 comment(501, "issue_url", 1),
                 comment(502, "issue_url", 99),
             ],
-            "/repos/a/b/pulls/comments": [comment(601, "pull_request_url", 2)],
+            "/repos/a/b/pulls/comments": [
+                {
+                    **comment(601, "pull_request_url", 2),
+                    "path": "src/app.py",
+                    "original_line": 12,
+                    "original_commit_id": "abc123",
+                }
+            ],
+            "/repos/a/b/pulls/2/files": [
+                {"filename": "src/app.py", "status": "modified", "additions": 4},
+                {"status": "broken"},
+            ],
             "/repos/a/b/pulls/2/reviews": [
                 {**comment(701, "x", 2), "created_at": None, "submitted_at": CREATED},
                 {**comment(702, "x", 2), "body": ""},
@@ -156,3 +174,30 @@ def test_progress_is_saved_while_importing(db_session: Session) -> None:
 
     # Once when the sync starts, then after every SAVE_EVERY rows.
     assert statuses == [SyncStatus.RUNNING] * 3
+
+
+def test_saves_changed_files_and_review_comment_lines(db_session: Session) -> None:
+    repo = crud.create_repository(db_session, full_name="a/b", html_url=WEB)
+
+    import_repository(db_session, github_with_data(), repo)
+
+    files = list(db_session.scalars(select(DiscussionFile)))
+    assert [(f.path, f.status, f.additions) for f in files] == [
+        ("src/app.py", "modified", 4)
+    ]
+    review = db_session.scalars(
+        select(Comment).where(Comment.kind == CommentKind.REVIEW_COMMENT)
+    ).one()
+    assert (review.path, review.line, review.commit_sha) == ("src/app.py", 12, "abc123")
+
+
+def test_older_prs_get_their_files_on_the_next_sync(db_session: Session) -> None:
+    repo = crud.create_repository(db_session, full_name="a/b", html_url=WEB)
+    import_repository(db_session, github_with_data(), repo)
+    db_session.execute(delete(DiscussionFile))
+
+    nothing_new = github_with_data()
+    nothing_new.pages["/repos/a/b/issues"] = []
+    import_repository(db_session, nothing_new, repo)
+
+    assert count(db_session, DiscussionFile) == 1

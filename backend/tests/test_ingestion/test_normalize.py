@@ -2,7 +2,12 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.ingestion.normalize import comment_values, discussion_values, parent_number
+from app.ingestion.normalize import (
+    comment_values,
+    discussion_values,
+    file_values,
+    parent_number,
+)
 from app.models import CommentKind, DiscussionKind
 
 ISSUE = {
@@ -57,6 +62,46 @@ def test_review_uses_submitted_at_as_created_time() -> None:
 
     assert values["created_at"] == datetime(2026, 1, 5, tzinfo=UTC)
     assert values["updated_at"] is None
+
+
+def test_review_comment_keeps_its_line_of_code() -> None:
+    review_comment = {
+        "id": 10,
+        "body": "This lock is not needed",
+        "html_url": "https://github.com/a/b/pull/8#discussion_r10",
+        "created_at": "2026-01-05T00:00:00Z",
+        "path": "src/cache.py",
+        "line": None,
+        "original_line": 42,
+        "commit_id": "new",
+        "original_commit_id": "abc123",
+    }
+
+    values = comment_values(review_comment, CommentKind.REVIEW_COMMENT)
+
+    assert (values["path"], values["line"], values["commit_sha"]) == (
+        "src/cache.py",
+        42,
+        "abc123",
+    )
+
+
+def test_issue_comment_has_no_code_location() -> None:
+    values = comment_values(
+        {"id": 1, "html_url": "u", "created_at": "2026-01-05T00:00:00Z"},
+        CommentKind.ISSUE_COMMENT,
+    )
+
+    assert values["path"] is None and values["line"] is None
+
+
+def test_changed_file_is_mapped() -> None:
+    assert file_values({"filename": "a.py", "status": "modified", "additions": 3}) == {
+        "path": "a.py",
+        "status": "modified",
+        "additions": 3,
+        "deletions": 0,
+    }
 
 
 def test_parent_number_reads_end_of_api_url() -> None:
