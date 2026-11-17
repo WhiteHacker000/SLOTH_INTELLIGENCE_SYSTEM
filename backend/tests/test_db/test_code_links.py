@@ -1,10 +1,12 @@
 from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
+from httpx import Response
 from sqlalchemy.orm import Session
 
 from app.db import crud
 from app.db.session import get_session
+from app.embeddings.embedder import EmbeddingsUnavailable, get_embedder
 from app.main import app
 from app.models import CommentKind, Decision, DecisionEvidence, DiscussionKind
 from app.schemas.decisions import DecisionStatus
@@ -105,36 +107,109 @@ def test_decisions_link_to_changed_files_and_reviewed_lines(db_session: Session)
     assert other.id not in code
 
 
+def ranked(session, repo_id, files, vector=None):
+    return [
+        (m.decision_id, m.files, m.similarity, round(score, 2))
+        for m, score in related_decisions(session, repo_id, files, 5, vector)
+    ]
+
+
+def unit(i: int) -> list[float]:
+    return [1.0 if j == i else 0.0 for j in range(384)]
+
+
 def test_same_file_ranks_above_same_folder(db_session: Session):
     repo, cache, _ = seed(db_session)
 
-    exact = related_decisions(db_session, repo.id, ["src/cache.py"], limit=5)
-    nearby = related_decisions(db_session, repo.id, ["src/new.py"], limit=5)
-    unrelated = related_decisions(db_session, repo.id, ["README.md"], limit=5)
+    exact = ranked(db_session, repo.id, ["src/cache.py"])
+    nearby = ranked(db_session, repo.id, ["src/new.py"])
 
-    assert exact == [(cache.id, ["src/cache.py", "src/lock.py"], 1.3)]
-    assert nearby == [(cache.id, ["src/cache.py", "src/lock.py"], 0.6)]
-    assert unrelated == []
+    assert exact == [(cache.id, ["src/cache.py", "src/lock.py"], None, 1.3)]
+    assert nearby == [(cache.id, ["src/cache.py", "src/lock.py"], None, 0.6)]
+    assert ranked(db_session, repo.id, ["README.md"]) == []
+
+
+def test_decisions_also_match_by_meaning(db_session: Session):
+    repo, cache, docs = seed(db_session)
+    docs.embedding, cache.embedding = unit(0), unit(1)
+    db_session.flush()
+
+    both = ranked(db_session, repo.id, ["src/cache.py"], vector=unit(0))
+
+    assert both == [
+        (cache.id, ["src/cache.py", "src/lock.py"], None, 1.3),
+        (docs.id, [], 1.0, 1.0),
+    ]
+
+
+class FakeEmbedder:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [unit(0) if "docs" in t.lower() else unit(1) for t in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        return unit(0)
+
+
+class MissingEmbedder(FakeEmbedder):
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        raise EmbeddingsUnavailable("not installed")
+
+
+def post(session: Session, embedder, **body) -> Response:
+    app.dependency_overrides[get_session] = lambda: session
+    app.dependency_overrides[get_embedder] = lambda: embedder
+    try:
+        return TestClient(app).post("/api/v1/pr-context", json=body)
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_pr_context_endpoint(db_session: Session):
     seed(db_session)
-    app.dependency_overrides[get_session] = lambda: db_session
-    try:
-        client = TestClient(app)
-        found = client.post(
-            "/api/v1/pr-context",
-            json={"repository_full_name": "a/b", "files": ["src/cache.py"]},
-        )
-        missing = client.post(
-            "/api/v1/pr-context",
-            json={"repository_full_name": "x/y", "files": ["a.py"]},
-        )
-    finally:
-        app.dependency_overrides.clear()
+
+    found = post(
+        db_session, FakeEmbedder(), repository_full_name="a/b", files=["src/cache.py"]
+    )
+    missing = post(
+        db_session, FakeEmbedder(), repository_full_name="x/y", files=["a.py"]
+    )
 
     assert missing.status_code == 404
     [related] = found.json()["decisions"]
     assert related["decision"]["title"] == "Remove the cache lock"
     assert related["matched_files"] == ["src/cache.py", "src/lock.py"]
+    assert related["similarity"] is None
     assert related["decision"]["code"][0]["line"] == 42
+
+
+def test_pr_title_finds_decisions_about_other_files(db_session: Session):
+    _, cache, docs = seed(db_session)
+
+    response = post(
+        db_session,
+        FakeEmbedder(),
+        repository_full_name="a/b",
+        files=["README.md"],
+        title="Shorten the docs",
+    )
+
+    [related] = response.json()["decisions"]
+    assert related["decision"]["title"] == "Keep docs short"
+    assert related["similarity"] == 1.0
+    assert docs.embedding is not None and cache.embedding is not None
+
+
+def test_without_embeddings_matching_falls_back_to_files(db_session: Session):
+    seed(db_session)
+
+    response = post(
+        db_session,
+        MissingEmbedder(),
+        repository_full_name="a/b",
+        files=["src/cache.py"],
+        title="Shorten the docs",
+    )
+
+    assert [r["decision"]["title"] for r in response.json()["decisions"]] == [
+        "Remove the cache lock"
+    ]

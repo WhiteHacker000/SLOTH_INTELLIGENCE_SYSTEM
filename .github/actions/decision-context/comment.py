@@ -81,17 +81,21 @@ def main() -> int:
     repo, token = os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_TOKEN"]
     server = os.environ["DECISION_SERVER_URL"].rstrip("/")
     indexed = os.environ.get("DECISION_REPOSITORY") or repo
-    number = event["pull_request"]["number"]
+    pr = event["pull_request"]
+    number = pr["number"]
     try:
         files = [
             f["filename"] for f in pages(f"/repos/{repo}/pulls/{number}/files", token)
         ]
-        if not files:
-            return 0
         context = request(
             "POST",
             f"{server}/api/v1/pr-context",
-            body={"repository_full_name": indexed, "files": files[:MAX_FILES]},
+            body={
+                "repository_full_name": indexed,
+                "files": files[:MAX_FILES],
+                "title": (pr.get("title") or "")[:300],
+                "body": pr.get("body") or "",
+            },
         )
         body = render(context["decisions"])
         existing = find_comment(repo, number, token)

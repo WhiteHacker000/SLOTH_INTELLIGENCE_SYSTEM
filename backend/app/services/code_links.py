@@ -1,6 +1,7 @@
 """Connect decisions to the files they touched, and find them again from a PR."""
 
 from collections import defaultdict
+from dataclasses import dataclass, field
 from posixpath import dirname
 from typing import Any
 from uuid import UUID
@@ -12,6 +13,9 @@ from app.models import Comment, Decision, DecisionEvidence, DiscussionFile, Repo
 from app.schemas.decisions import CodeReference
 
 SAME_FILE, SAME_FOLDER = 1.0, 0.3
+# Measured on the dev data: PR titles score below 0.62 against 90% of unrelated
+# decisions, and 0.70 keeps about half of the right ones with 1% wrong.
+MIN_SIMILARITY = 0.70
 
 
 def _changed_files() -> Select[Any]:
@@ -50,14 +54,48 @@ def code_for(
     return {d: sorted(r.values(), key=lambda c: c.path) for d, r in refs.items()}
 
 
-def related_decisions(
-    session: Session, repository_id: UUID, files: list[str], limit: int
-) -> list[tuple[UUID, list[str], float]]:
-    """Decisions that touched the same files, or files in the same folders.
+@dataclass
+class Match:
+    decision_id: UUID
+    files: list[str] = field(default_factory=list)
+    similarity: float | None = None
 
-    Returns (decision id, matched files, score), best first.
+    def score(self, wanted: set[str]) -> float:
+        files = sum(SAME_FILE if f in wanted else SAME_FOLDER for f in self.files)
+        return files + (self.similarity or 0.0)
+
+
+def related_decisions(
+    session: Session,
+    repository_id: UUID,
+    files: list[str],
+    limit: int,
+    query_vector: list[float] | None = None,
+) -> list[tuple[Match, float]]:
+    """Decisions that touched the same files or folders, or mean the same thing.
+
+    Returns matches with their score, best first.
     """
     wanted = set(files)
+    matches: dict[UUID, Match] = {}
+    for decision_id, path in _file_matches(session, repository_id, files):
+        matches.setdefault(decision_id, Match(decision_id)).files.append(path)
+    if query_vector is not None:
+        for decision_id, similarity in _meaning_matches(
+            session, repository_id, query_vector
+        ):
+            matches.setdefault(decision_id, Match(decision_id)).similarity = similarity
+    for match in matches.values():
+        match.files.sort(key=lambda p: (p not in wanted, p))
+    ranked = sorted(matches.values(), key=lambda m: m.score(wanted), reverse=True)
+    return [(m, m.score(wanted)) for m in ranked[:limit]]
+
+
+def _file_matches(
+    session: Session, repository_id: UUID, files: list[str]
+) -> list[tuple[UUID, str]]:
+    if not files:
+        return []
     folders = {dirname(f) for f in files if dirname(f)}
     touched = union(_changed_files(), _reviewed_lines()).subquery()
     query = (
@@ -66,20 +104,21 @@ def related_decisions(
         .where(
             Decision.repository_id == repository_id,
             or_(
-                touched.c.path.in_(wanted),
+                touched.c.path.in_(files),
                 *(touched.c.path.startswith(f + "/", autoescape=True) for f in folders),
             ),
         )
     )
-    matches: dict[UUID, set[str]] = defaultdict(set)
-    for decision_id, path in session.execute(query):
-        matches[decision_id].add(path)
+    return [(d, p) for d, p in session.execute(query)]
 
-    def score(paths: set[str]) -> float:
-        return sum(SAME_FILE if p in wanted else SAME_FOLDER for p in paths)
 
-    ranked = sorted(matches.items(), key=lambda m: score(m[1]), reverse=True)
-    return [
-        (decision_id, sorted(paths, key=lambda p: (p not in wanted, p)), score(paths))
-        for decision_id, paths in ranked[:limit]
-    ]
+def _meaning_matches(
+    session: Session, repository_id: UUID, query_vector: list[float]
+) -> list[tuple[UUID, float]]:
+    distance = Decision.embedding.cosine_distance(query_vector)
+    query = select(Decision.id, distance).where(
+        Decision.repository_id == repository_id,
+        Decision.embedding.is_not(None),
+        distance <= 1 - MIN_SIMILARITY,
+    )
+    return [(d, 1 - dist) for d, dist in session.execute(query)]

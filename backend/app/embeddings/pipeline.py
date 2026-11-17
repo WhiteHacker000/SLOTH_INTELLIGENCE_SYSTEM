@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.embeddings.embedder import Embedder
-from app.models import Discussion, DocumentChunk
+from app.models import Decision, Discussion, DocumentChunk
 
 BATCH_SIZE = 64
 
@@ -39,3 +39,22 @@ def embed_pending_chunks(
         save_progress()
         embedded += len(chunks)
     return embedded
+
+
+def embed_pending_decisions(
+    session: Session, embedder: Embedder, repository_id: UUID
+) -> int:
+    """Embed a repository's decisions that have no embedding yet."""
+    decisions = session.scalars(
+        select(Decision).where(
+            Decision.repository_id == repository_id, Decision.embedding.is_(None)
+        )
+    ).all()
+    if decisions:
+        texts = [f"{d.title}. {d.decision}" for d in decisions]
+        for decision, vector in zip(
+            decisions, embedder.embed_documents(texts), strict=True
+        ):
+            decision.embedding = vector
+        session.flush()
+    return len(decisions)

@@ -42,4 +42,16 @@ python -m app.evaluation.retrieval ../evaluation/datasets/questions.jsonl --answ
 | --- | --- | --- | --- | --- |
 | 2026-11-17 | Baseline: exact cosine search, `bge-small-en-v1.5` | 0.97 | 0.70 | 0.82 |
 
+### Pull request matching threshold
+
+`/pr-context` matches decisions by meaning when cosine similarity is at least 0.70. Measured on 55 PR and issue threads with decisions, comparing each thread's title with its own decisions (124) and with every other decision in the same repository (2,478):
+
+| Threshold | Own decisions kept | Other decisions let through |
+| --- | --- | --- |
+| 0.70 | 47% | 1.1% |
+| 0.75 | 38% | 0.3% |
+| 0.80 | 32% | 0.1% |
+
+Other decisions score below 0.62 nine times out of ten. A thread's own decision ranked first 82% of the time.
+
 Answer metrics are not recorded yet: Gemma 3 4B was too slow on the 8 GB development machine to finish a run.
