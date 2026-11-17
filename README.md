@@ -121,6 +121,10 @@ During development, Vite proxies `/api` requests to the backend at `http://local
 
 The initial screen is intentionally a foundation/status page; it does not yet call the backend or claim that repository import, decisions, or question answering work.
 
+## Deployment
+
+See [docs/deployment.md](docs/deployment.md) for running everything on one Ubuntu server without Docker.
+
 ## Configuration and dependencies
 
 Backend runtime dependencies are listed in `backend/requirements.txt`; test-only dependencies are in `backend/requirements-dev.txt`. `backend/pyproject.toml` configures the package and pytest. Frontend dependencies and scripts are managed with npm and `frontend/package-lock.json`.
