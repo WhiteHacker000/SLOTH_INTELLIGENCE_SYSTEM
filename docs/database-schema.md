@@ -10,6 +10,7 @@ Models live in `backend/app/models/entities.py`. Migrations live in `backend/mig
 | `document_chunks` | Searchable text with its embedding | `discussion_id`, `comment_id` (NULL for the issue/PR body), `ordinal`, `source_url`, `embedding vector(384)` |
 | `decisions` | An extracted technical decision | `title`, `decision`, `rationale`, `alternatives`, `trade_offs`, `status`, `confidence`, `extraction_model` |
 | `decision_evidence` | Links a decision to the discussion or comment that supports it | `decision_id`, `discussion_id`, `comment_id`, `excerpt`, `source_url` |
+| `jobs` | Syncs and extractions waiting for the background worker | `repository_id`, `kind`, `status`, `attempts`, `run_after`, `last_error` |
 
 ## Notes
 
@@ -35,6 +36,10 @@ alembic check             # fails if models and migrations have drifted
 ```
 
 `DATABASE_URL` is read from the root `.env`.
+
+## Jobs
+
+Background work is queued in `jobs` so it survives a restart. A worker claims the oldest due job with `FOR UPDATE SKIP LOCKED`. A failed job is retried after 30 s, then 60 s, and marked `failed` after three attempts. Jobs still `running` at startup were cut off by a restart and go back in the queue. A GitHub token pasted for a sync is held in memory only, never in this table.
 
 ## Data access
 

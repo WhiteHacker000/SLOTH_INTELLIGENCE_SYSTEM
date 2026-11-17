@@ -4,7 +4,7 @@ from app.db.base import Base
 from app.models import Comment, Decision, Discussion, DocumentChunk
 
 
-def test_all_phase_one_tables_are_registered() -> None:
+def test_all_tables_are_registered() -> None:
     assert set(Base.metadata.tables) == {
         "repositories",
         "discussions",
@@ -12,6 +12,7 @@ def test_all_phase_one_tables_are_registered() -> None:
         "document_chunks",
         "decisions",
         "decision_evidence",
+        "jobs",
     }
 
 

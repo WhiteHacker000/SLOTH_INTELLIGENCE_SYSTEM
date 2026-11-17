@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     warm_up_models: bool = False
     # When set, import, sync and extraction need this key in X-Admin-Key.
     admin_api_key: SecretStr | None = None
+    # Run queued syncs and extractions in this process.
+    run_job_worker: bool = True
     # Per client IP, for search and ask. 0 turns the limit off.
     questions_per_minute: int = 10
 

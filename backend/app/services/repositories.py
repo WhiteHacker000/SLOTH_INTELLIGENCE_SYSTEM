@@ -12,14 +12,14 @@ from app.embeddings.pipeline import embed_pending_chunks
 from app.ingestion.estimate import estimate_import
 from app.ingestion.github_client import GitHubReader, create_github_client
 from app.ingestion.importer import import_repository
-from app.models import Comment, Decision, Discussion, Repository, SyncStatus
+from app.models import Comment, Decision, Discussion, JobKind, Repository, SyncStatus
 from app.processing.chunks import chunk_repository
 from app.schemas.repositories import (
     ImportEstimateRead,
     RepositoryDetail,
     RepositoryRead,
 )
-from app.services.decisions import extracting
+from app.services import jobs
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def repository_detail(session: Session, repository: Repository) -> RepositoryDet
         discussion_count=discussions or 0,
         comment_count=comments or 0,
         decision_count=decisions or 0,
-        extracting=repository.id in extracting,
+        extracting=jobs.has_active(session, repository.id, JobKind.EXTRACT),
     )
 
 

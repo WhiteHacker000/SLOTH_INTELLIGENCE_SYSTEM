@@ -11,12 +11,12 @@
   - Errors: `422` invalid URL, `404` not on GitHub, `429` rate limit reached, `502` GitHub unavailable.
 - `GET /api/v1/repositories` lists registered repositories with their last sync time and error.
 - `GET /api/v1/repositories/{id}` returns one repository with its discussion, comment and decision counts, and `extracting` (true while an extraction runs).
-- `POST /api/v1/repositories/{id}/sync` starts an import in the background and returns `202` straight away.
+- `POST /api/v1/repositories/{id}/sync` queues an import for the background worker and returns `202` straight away. A second request while one is queued or running adds nothing.
   - Body (optional): `{"token": "..."}`. The token is used for this sync only and is not stored or logged. Without it, `GITHUB_TOKEN` from `.env` is used, else the import runs anonymously.
   - Check progress with `GET /api/v1/repositories/{id}`. Counts update while the sync runs, since progress is saved every 100 rows.
   - `sync_status` is one of `never_synced`, `running`, `paused`, `failed`, `synced`. `paused` means the rate limit ran out: `last_sync_error` asks for a token and the next sync continues from the last checkpoint.
 - `GET /api/v1/repositories/{id}/decisions` lists extracted decisions with `decision`, `rationale`, `alternatives` and `evidence` (quote plus GitHub link).
-- `POST /api/v1/repositories/{id}/extract` runs Gemma in the background on the 15 most-discussed threads not processed yet, and returns `202` with how many threads it picked. Run it again for the next 15. Each thread takes about 15 seconds.
+- `POST /api/v1/repositories/{id}/extract` queues Gemma on the 15 most-discussed threads not processed yet, and returns `202` with how many threads it picked. Run it again for the next 15. Each thread takes about 15 seconds. While an extraction is queued or running it returns `threads: 0` and "Extraction is already running". If Ollama fails, the job is retried later and skips threads already done.
 - `POST /api/v1/search` returns the discussion chunks closest in meaning to a question.
   - Body: `{"query": "Why was X rejected?", "repository_full_name": "owner/name", "source_types": ["issue", "review"], "limit": 5}`. Only `query` is required; `limit` is 1 to 20.
   - Each result has its text, `similarity` (0 to 1), `source_url`, `source_type`, issue or PR number and title, author and time.

@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
+from app.services.worker import start_worker
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +31,14 @@ def warm_up_models() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    if get_settings().warm_up_models:
+    settings = get_settings()
+    if settings.warm_up_models:
         # In a thread so the server starts answering straight away.
         threading.Thread(target=warm_up_models, daemon=True).start()
+    stop = start_worker() if settings.run_job_worker else None
     yield
+    if stop is not None:
+        stop.set()
 
 
 def create_app() -> FastAPI:

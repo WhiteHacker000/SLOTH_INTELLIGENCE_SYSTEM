@@ -7,9 +7,10 @@ from app.api.routes.repositories import get_extraction_runner
 from app.db import crud
 from app.db.session import get_session
 from app.main import app
-from app.models import CommentKind, Decision, DecisionEvidence, DiscussionKind
+from app.models import CommentKind, Decision, DecisionEvidence, DiscussionKind, JobKind
 from app.schemas.decisions import DecisionStatus
-from app.services.decisions import extracting, threads_to_extract
+from app.services import jobs
+from app.services.decisions import threads_to_extract
 
 CREATED = datetime(2026, 1, 2, tzinfo=UTC)
 WEB = "https://github.com/a/b"
@@ -115,7 +116,23 @@ def test_extract_starts_background_run(db_session: Session) -> None:
     assert runs[0] == [threads[0].id, threads[1].id]
     assert again.json()["message"] == "All threads are already processed"
     assert len(runs) == 1
-    detail = client(db_session, runs).get(f"/api/v1/repositories/{repo.id}")
-    app.dependency_overrides.clear()
-    extracting.discard(repo.id)
+
+
+def test_extract_is_not_queued_twice(db_session: Session) -> None:
+    repo, _ = seed(db_session, [2])
+    jobs.enqueue(db_session, JobKind.EXTRACT, repo.id)
+    runs: list = []
+    try:
+        api = client(db_session, runs)
+        started = api.post(f"/api/v1/repositories/{repo.id}/extract")
+        detail = api.get(f"/api/v1/repositories/{repo.id}")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert started.json() == {
+        "repository_id": str(repo.id),
+        "threads": 0,
+        "message": "Extraction is already running",
+    }
+    assert runs == []
     assert detail.json()["extracting"] is True
