@@ -41,6 +41,9 @@ python -m app.evaluation.retrieval ../evaluation/datasets/questions.jsonl --answ
 | Date | Change | hit@5 | hit@1 | MRR |
 | --- | --- | --- | --- | --- |
 | 2026-11-17 | Baseline: exact cosine search, `bge-small-en-v1.5` | 0.97 | 0.70 | 0.82 |
+| 2026-11-17 | Tried: fuse with PostgreSQL full-text search (RRF, k=60) | 0.87 | 0.60 | 0.70 |
+
+Full-text search made results worse, so it was not kept. Lowering its weight in the fusion did not recover the baseline, which suggests the vectors already find what keywords would: questions are full sentences, and OR-ing their words mostly adds noise. It may still help for exact identifier lookups, which this set does not test.
 
 ### Pull request matching threshold
 
