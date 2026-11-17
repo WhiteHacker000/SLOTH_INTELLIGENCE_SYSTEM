@@ -52,7 +52,7 @@ Full-text search made results worse, so it was not kept. Lowering its weight in 
 
 | Change | Before | After |
 | --- | --- | --- |
-| Prompt example | The example decision "Use ruff for linting" was copied into 4 of 128 decisions on threads that never mention ruff | Placeholder example, and copies are dropped. Re-extracting one affected thread gave 3 real decisions and no copy |
+| Prompt example | The example decision "Use ruff for linting" was copied into 12 of 318 decisions on threads that never mention ruff | Placeholder example, and copies are dropped. Re-extracting one affected thread gave 3 real decisions and no copy. The 12 were removed with `backend/scripts/remove_copied_decisions.py` |
 | Pull request matching | By file path only: a PR touching new files found nothing | Also by meaning: a thread's own decision ranks first for its title 82% of the time, with 1.1% unrelated matches at the 0.70 threshold |
 | Long threads | Only the first ~9,000 characters were read, so the final comments, where decisions usually land, were lost | The opening post and the newest replies are kept. Not measured yet |
 | Keyword search | Vector search, hit@5 0.97 | Tried hybrid search, hit@5 0.87, so it was not kept |

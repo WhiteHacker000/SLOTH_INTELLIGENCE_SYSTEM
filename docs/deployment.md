@@ -75,7 +75,16 @@ sudo -u postgres pg_restore --no-owner --role=decision_intelligence -d decision_
 ```bash
 cd /opt/decision-intelligence && sudo -u app git pull
 sudo -u app backend/.venv/bin/alembic -c backend/alembic.ini upgrade head
+cd frontend && sudo -u app npm ci && sudo -u app npm run build && cd ..
 systemctl restart decision-intelligence
+```
+
+Decisions extracted before the prompt fix may include copies of the old example. To list and remove them:
+
+```bash
+cd /opt/decision-intelligence/backend
+sudo -u app .venv/bin/python -m scripts.remove_copied_decisions          # list
+sudo -u app .venv/bin/python -m scripts.remove_copied_decisions --apply  # remove
 ```
 
 ## Before sharing the URL
