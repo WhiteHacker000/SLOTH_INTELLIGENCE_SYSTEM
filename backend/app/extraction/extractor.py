@@ -5,7 +5,13 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.extraction.prompt import SYSTEM_PROMPT, Message, build_prompt, build_thread
+from app.extraction.prompt import (
+    EXAMPLE_PLACEHOLDER,
+    SYSTEM_PROMPT,
+    Message,
+    build_prompt,
+    build_thread,
+)
 from app.generation.llm import LanguageModel, generate_validated
 from app.models import Comment, Decision, DecisionEvidence, Discussion
 from app.schemas.decisions import DecisionExtraction, DecisionStatus, ExtractionResult
@@ -39,6 +45,9 @@ def extract_decisions(
     by_id = {message.id: message for message in messages}
     saved = []
     for extracted in result.decisions:
+        if _copies_example(extracted):
+            logger.info("Dropped decision copied from the prompt: %s", extracted.title)
+            continue
         evidence = _checked_evidence(extracted, by_id, discussion.id)
         if not evidence:
             logger.info("Dropped decision without real evidence: %s", extracted.title)
@@ -81,6 +90,11 @@ def _checked_evidence(
             )
         )
     return evidence
+
+
+def _copies_example(extracted: DecisionExtraction) -> bool:
+    text = " ".join([extracted.title, extracted.decision, *extracted.rationale])
+    return EXAMPLE_PLACEHOLDER in text.lower()
 
 
 def _normalize(text: str) -> str:

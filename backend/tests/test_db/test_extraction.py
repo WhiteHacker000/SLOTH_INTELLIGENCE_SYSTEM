@@ -104,6 +104,19 @@ def test_made_up_quotes_and_ids_are_dropped(db_session: Session) -> None:
     assert run(db_session, pr, model) == []
 
 
+def test_decision_copied_from_the_prompt_example_is_dropped(
+    db_session: Session,
+) -> None:
+    pr = make_pr(db_session)
+    copied = {
+        **decision(("M1", "drop it in the next release")),
+        "decision": "Use <tool A>",
+        "rationale": ["<tool A> is faster"],
+    }
+
+    assert run(db_session, pr, FakeModel([copied])) == []
+
+
 def test_rerun_replaces_earlier_decisions(db_session: Session) -> None:
     pr = make_pr(db_session)
     model = FakeModel([decision(("M0", "end of life"), status="proposed")])

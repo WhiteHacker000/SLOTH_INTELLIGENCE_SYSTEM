@@ -19,9 +19,13 @@ Fields:
   it was only suggested. unresolved if people disagree or it is unclear.
 - evidence: message id and a short quote copied word for word from it.
 
-Example: "We should switch to ruff" then "Agreed, ruff is faster" gives
-decision "Use ruff for linting", rationale ["ruff is faster"], status accepted.
+Example: "We should switch to <tool A>" then "Agreed, <tool A> is faster"
+gives decision "Use <tool A>", rationale ["<tool A> is faster"], status
+accepted. <tool A> is a placeholder: never copy it into your answer.
 Return an empty list if there is no technical decision."""
+
+# Text from the example above. A decision containing it was copied, not found.
+EXAMPLE_PLACEHOLDER = "<tool a>"
 
 
 @dataclass
