@@ -10,6 +10,7 @@ This project imports a public GitHub repository, finds the decisions in its disc
 - **Extract decisions** with a local LLM (Gemma 3 4B through Ollama). Each decision has the decision itself, the rationale, rejected alternatives with the reason they were rejected, and evidence quotes.
 - **Ask questions** in plain language. The answer is built only from retrieved discussion text and cites its sources.
 - **Browse** decisions per repository in a web UI, with every quote linked back to GitHub.
+- **Review pull requests** with a GitHub Action that comments on new PRs with past decisions about the files they change. See [docs/pr-bot.md](docs/pr-bot.md).
 
 ## How it avoids made-up answers
 
@@ -109,19 +110,16 @@ See [docs/deployment.md](docs/deployment.md) for running everything on one Ubunt
 ## Known limitations
 
 - Only GitHub issues and pull requests are imported. Forums, GitHub Discussions and design documents are not.
-- Decisions are not yet linked to source files, so they cannot be shown on new pull requests.
-- Long threads are trimmed to fit the model's context, which can cut off the final comments.
+- Long threads keep the opening post and the newest replies; middle comments are dropped to fit the model's context.
 - A 4B model splits some decisions into several and marks many as `proposed`.
 - There is no evaluation dataset yet, so extraction and answer quality are not measured.
 
 ## Roadmap
 
-1. Read long threads fully and run background jobs from a database queue.
-2. Link decisions to the files and lines they affect.
-3. Comment on new pull requests with related past decisions.
-4. Build an evaluation set from PEPs, Rust RFCs and labelled GitHub threads.
-5. Combine keyword and vector search, and merge duplicate decisions across threads.
-6. Let maintainers verify or edit decisions, and export them as ADRs.
+1. Show the files and lines each decision touched in the web UI.
+2. Build an evaluation set from PEPs, Rust RFCs and labelled GitHub threads.
+3. Combine keyword and vector search, and merge duplicate decisions across threads.
+4. Let maintainers verify or edit decisions, and export them as ADRs.
 
 ## Contributing
 
