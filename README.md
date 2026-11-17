@@ -9,7 +9,7 @@ This project imports a public GitHub repository, finds the decisions in its disc
 - **Import** issues, pull requests, comments and code reviews from any public GitHub repository. Later syncs only fetch what changed. If the GitHub rate limit runs out, the import pauses and continues on the next sync.
 - **Extract decisions** with a local LLM (Gemma 3 4B through Ollama). Each decision has the decision itself, the rationale, rejected alternatives with the reason they were rejected, and evidence quotes.
 - **Ask questions** in plain language. The answer is built only from retrieved discussion text and cites its sources.
-- **Browse** decisions per repository in a web UI, with every quote linked back to GitHub.
+- **Browse** decisions per repository in a web UI, with every quote linked back to GitHub and the files and lines each decision touched.
 - **Review pull requests** with a GitHub Action that comments on new PRs with past decisions about the files they change. See [docs/pr-bot.md](docs/pr-bot.md).
 
 ## How it avoids made-up answers
@@ -116,8 +116,8 @@ See [docs/deployment.md](docs/deployment.md) for running everything on one Ubunt
 
 ## Roadmap
 
-1. Show the files and lines each decision touched in the web UI.
-2. Build an evaluation set from PEPs, Rust RFCs and labelled GitHub threads.
+1. Build an evaluation set from PEPs, Rust RFCs and labelled GitHub threads.
+2. Match pull requests to decisions by meaning as well as by file.
 3. Combine keyword and vector search, and merge duplicate decisions across threads.
 4. Let maintainers verify or edit decisions, and export them as ADRs.
 

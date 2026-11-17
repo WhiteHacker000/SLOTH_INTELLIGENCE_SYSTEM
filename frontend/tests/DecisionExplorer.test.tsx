@@ -16,6 +16,7 @@ const decision = {
       source_url: "https://github.com/a/b/pull/12#issuecomment-99",
     },
   ],
+  code: [],
 };
 
 function respond(status: number, body: unknown) {
@@ -65,5 +66,31 @@ describe("sourceLabel", () => {
     ["https://example.com", "GitHub"],
   ])("%s -> %s", (url, label) => {
     expect(sourceLabel(url)).toBe(label);
+  });
+
+  it("links the files and lines a decision touched, lines first", async () => {
+    const files = Array.from({ length: 9 }, (_, i) => ({
+      path: `src/f${i}.py`,
+      line: null,
+      url: `https://github.com/a/b/blob/main/src/f${i}.py`,
+    }));
+    const reviewed = { path: "src/cache.py", line: 42, url: "https://github.com/a/b/blob/abc/src/cache.py#L42" };
+    respond(200, [{ ...decision, code: [...files, reviewed] }]);
+    render(<DecisionExplorer repositoryId="r1" />);
+
+    const line = await screen.findByRole("link", { name: "src/cache.py:42" });
+    expect(line).toHaveAttribute("href", reviewed.url);
+    const links = screen.getAllByRole("link").filter((a) => a.textContent?.startsWith("src/"));
+    expect(links[0]).toBe(line);
+    expect(links).toHaveLength(8);
+    expect(screen.getByText("and 2 more files")).toBeInTheDocument();
+  });
+
+  it("leaves out the code section when no files are known", async () => {
+    respond(200, [decision]);
+    render(<DecisionExplorer repositoryId="r1" />);
+
+    await screen.findByText("Stop supporting Python 3.8.");
+    expect(screen.queryByText("Code")).not.toBeInTheDocument();
   });
 });

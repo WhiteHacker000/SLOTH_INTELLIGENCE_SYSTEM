@@ -6,6 +6,34 @@ import { sourceLabel } from "@/lib/github";
 import type { Decision } from "@/types/api";
 
 const REFRESH_MS = 10000;
+// Large PRs touch many files; the first few are enough to orient a reader.
+const MAX_FILES = 8;
+
+function CodeLinks({ code }: { code: Decision["code"] }) {
+  // Exact lines first: they say the most about where the decision lives.
+  const sorted = [...code].sort((a, b) => Number(b.line !== null) - Number(a.line !== null));
+  const hidden = sorted.length - MAX_FILES;
+  return (
+    <div className="mt-3">
+      <h4 className="text-xs font-semibold uppercase text-slate-500">Code</h4>
+      <ul className="mt-1 flex flex-wrap gap-2">
+        {sorted.slice(0, MAX_FILES).map((c) => (
+          <li key={c.path}>
+            <a
+              href={c.url}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-800 hover:bg-slate-200"
+            >
+              {c.line ? `${c.path}:${c.line}` : c.path}
+            </a>
+          </li>
+        ))}
+      </ul>
+      {hidden > 0 && <p className="mt-1 text-xs text-slate-500">and {hidden} more files</p>}
+    </div>
+  );
+}
 
 export function DecisionExplorer({ repositoryId }: { repositoryId: string }) {
   const [decisions, setDecisions] = useState<Decision[] | null>(null);
@@ -71,6 +99,7 @@ export function DecisionExplorer({ repositoryId }: { repositoryId: string }) {
               </ul>
             </div>
           )}
+          {d.code.length > 0 && <CodeLinks code={d.code} />}
           <div className="mt-3">
             <h4 className="text-xs font-semibold uppercase text-slate-500">Evidence</h4>
             <ul className="mt-1 space-y-2">
