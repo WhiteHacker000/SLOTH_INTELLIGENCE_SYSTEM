@@ -4,12 +4,15 @@ Usage, from backend/ with the database, embeddings and (for --answers) Ollama:
 
     python -m app.evaluation.retrieval ../evaluation/datasets/questions.jsonl
     python -m app.evaluation.retrieval ../evaluation/datasets/questions.jsonl --answers
+
+Add --save "what changed" to append the result to evaluation/results/history.jsonl.
 """
 
 import argparse
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 from app.evaluation.metrics import hit_at_k, mean, precision, reciprocal_rank
@@ -90,6 +93,7 @@ def main() -> None:
     parser.add_argument("dataset", type=Path)
     parser.add_argument("--answers", action="store_true", help="also run the LLM")
     parser.add_argument("--k", type=int, default=5)
+    parser.add_argument("--save", metavar="LABEL", help="append to the history")
     args = parser.parse_args()
 
     embedder = get_embedder()
@@ -110,6 +114,19 @@ def main() -> None:
             load(args.dataset), search, answer if args.answers else None, args.k
         )
     print(json.dumps(report, indent=2))
+    if args.save:
+        save(HISTORY, args.save, args.dataset.stem, report)
+
+
+HISTORY = Path(__file__).parents[3] / "evaluation/results/history.jsonl"
+
+
+def save(history: Path, label: str, dataset: str, report: dict) -> None:
+    """Append one run, so improvements can be shown as before and after."""
+    history.parent.mkdir(parents=True, exist_ok=True)
+    entry = {"date": date.today().isoformat(), "label": label, "dataset": dataset}
+    with history.open("a") as file:
+        file.write(json.dumps(entry | report) + "\n")
 
 
 if __name__ == "__main__":

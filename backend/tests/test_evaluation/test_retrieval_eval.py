@@ -4,12 +4,12 @@ from pathlib import Path
 import pytest
 
 from app.evaluation.metrics import hit_at_k, mean, precision, reciprocal_rank
-from app.evaluation.retrieval import Question, evaluate, load
+from app.evaluation.retrieval import Question, evaluate, load, save
 from app.schemas.answers import AnswerStatus, AskResponse
 from app.schemas.github import DiscussionSourceType
 from app.schemas.retrieval import RetrievedEvidence
 
-DATASET = Path(__file__).parents[3] / "evaluation/datasets/questions.jsonl"
+DATASETS = Path(__file__).parents[3] / "evaluation/datasets"
 
 
 def test_ranking_metrics() -> None:
@@ -91,9 +91,27 @@ def test_answer_report() -> None:
     assert report["abstained"] == 1.0
 
 
-def test_dataset_is_well_formed() -> None:
-    questions = load(DATASET)
+@pytest.mark.parametrize("name", ["questions", "heldout"])
+def test_datasets_are_well_formed(name: str) -> None:
+    questions = load(DATASETS / f"{name}.jsonl")
 
     assert len(questions) >= 30
     for q in questions:
         assert q.answerable == bool(q.expected_threads), q.question
+
+
+def test_held_out_questions_are_new() -> None:
+    tuning = {q.question for q in load(DATASETS / "questions.jsonl")}
+
+    assert not tuning & {q.question for q in load(DATASETS / "heldout.jsonl")}
+
+
+def test_save_appends_runs(tmp_path: Path) -> None:
+    history = tmp_path / "results/history.jsonl"
+
+    save(history, "baseline", "questions", {"hit@1": 0.7})
+    save(history, "better", "questions", {"hit@1": 0.8})
+
+    lines = history.read_text().splitlines()
+    assert len(lines) == 2
+    assert '"label": "better"' in lines[1] and '"hit@1": 0.8' in lines[1]

@@ -29,9 +29,11 @@
   - If no result scores at least 0.65 similarity, it returns `insufficient_evidence` without calling the model.
   - Citations are checked against the retrieved results. An answer with no real citation becomes `insufficient_evidence`.
   - Errors: `404` unknown repository, `503` embeddings or Ollama not available.
-- `POST /api/v1/pr-context` finds past decisions about the files a pull request changes.
-  - Body: `{"repository_full_name": "owner/name", "files": ["src/cache.py"], "limit": 5}`. `files` takes 1 to 300 paths.
-  - A decision matches when it touched the same file (score 1 each) or a file in the same folder (0.3 each). Results are best first, with `matched_files` and the full decision.
+- `POST /api/v1/pr-context` finds past decisions about the files a pull request changes, or about its topic.
+  - Body: `{"repository_full_name": "owner/name", "files": ["src/cache.py"], "title": "...", "body": "...", "limit": 5}`. `files` takes up to 300 paths; `title` and `body` are optional.
+  - A decision scores 1 for each file it touched that the PR also changes, and 0.3 for each file in the same folder.
+  - With a title or body, decisions whose meaning is close to it (cosine similarity of at least 0.70) also match, adding the similarity to their score. Decisions get their embedding the first time this runs. Without the embedding model installed, matching uses files only.
+  - Results are best first, with `matched_files`, `similarity` and the full decision.
   - Errors: `404` unknown repository.
 - `GET /api/v1/admin` returns `key_required` and `key_valid` for the `X-Admin-Key` header sent, so the UI knows whether to show import and extract controls.
 - When `ADMIN_API_KEY` is set, registering, syncing and extracting need it in the `X-Admin-Key` header, else they return `401`.

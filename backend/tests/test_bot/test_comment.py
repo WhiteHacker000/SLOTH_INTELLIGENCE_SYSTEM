@@ -53,7 +53,11 @@ def test_nothing_to_say_renders_nothing() -> None:
 def github(tmp_path, monkeypatch):
     """Fake GitHub and server; records every write the script makes."""
     event = tmp_path / "event.json"
-    event.write_text(json.dumps({"pull_request": {"number": 9}}))
+    event.write_text(
+        json.dumps(
+            {"pull_request": {"number": 9, "title": "Drop the lock", "body": None}}
+        )
+    )
     for key, value in {
         "GITHUB_EVENT_PATH": str(event),
         "GITHUB_REPOSITORY": "a/b",
@@ -72,6 +76,7 @@ def github(tmp_path, monkeypatch):
         if url.startswith("https://server"):
             if state["down"]:
                 raise urllib.error.URLError("refused")
+            state["sent"] = body
             return {"decisions": state["decisions"]}
         state["writes"].append((method, url, body["body"]))
 
@@ -89,6 +94,8 @@ def test_posts_a_new_comment(github) -> None:
         f"{comment.GITHUB_API}/repos/a/b/issues/9/comments",
     )
     assert "Remove the cache lock" in body
+    assert github["sent"]["title"] == "Drop the lock"
+    assert github["sent"]["body"] == ""
 
 
 def test_updates_its_own_comment_instead_of_adding_another(github) -> None:

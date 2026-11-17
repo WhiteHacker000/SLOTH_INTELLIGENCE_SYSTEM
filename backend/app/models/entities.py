@@ -207,6 +207,8 @@ class Decision(Base):
     # Model self-reported score, not a calibrated probability.
     confidence: Mapped[float | None] = mapped_column(Float)
     extraction_model: Mapped[str] = mapped_column(String(255))
+    # Title and decision text, for matching pull requests by meaning.
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSION))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utc_now
     )

@@ -118,7 +118,7 @@ See [docs/deployment.md](docs/deployment.md) for running everything on one Ubunt
 
 1. Build an evaluation set from PEPs, Rust RFCs and labelled GitHub threads.
 2. Match pull requests to decisions by meaning as well as by file.
-3. Combine keyword and vector search, and merge duplicate decisions across threads.
+3. Merge duplicate decisions across threads.
 4. Let maintainers verify or edit decisions, and export them as ADRs.
 
 ## Contributing

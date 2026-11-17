@@ -1,6 +1,6 @@
 # Pull request bot
 
-The `decision-context` GitHub Action comments on a pull request with past decisions about the files it changes. It reads the PR's changed files, calls `POST /api/v1/pr-context` on a Decision Intelligence server, and posts one comment. Later pushes update that comment instead of adding new ones. If nothing matches, it stays quiet.
+The `decision-context` GitHub Action comments on a pull request with past decisions about the files it changes, or about what its title and description say it does. It reads the PR's changed files, title and description, calls `POST /api/v1/pr-context` on a Decision Intelligence server, and posts one comment. Later pushes update that comment instead of adding new ones. If nothing matches, it stays quiet.
 
 ## Setup
 
