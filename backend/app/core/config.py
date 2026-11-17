@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
@@ -19,6 +20,10 @@ class Settings(BaseSettings):
     frontend_dist: Path | None = None
     # Load both models when the server starts, so the first answer is not slow.
     warm_up_models: bool = False
+    # When set, import, sync and extraction need this key in X-Admin-Key.
+    admin_api_key: SecretStr | None = None
+    # Per client IP, for search and ask. 0 turns the limit off.
+    questions_per_minute: int = 10
 
     model_config = SettingsConfigDict(
         env_file=REPOSITORY_ROOT / ".env",

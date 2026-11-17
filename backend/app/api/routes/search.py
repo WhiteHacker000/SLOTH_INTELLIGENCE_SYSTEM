@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.lookups import embed_query, repository_id_for
+from app.api.security import limit_questions
 from app.db.session import get_session
 from app.embeddings.embedder import Embedder, get_embedder
 from app.retrieval.search import search_chunks
@@ -12,7 +13,9 @@ from app.schemas.retrieval import RetrievalRequest, SearchResponse
 router = APIRouter(tags=["search"])
 
 
-@router.post("/search", response_model=SearchResponse)
+@router.post(
+    "/search", response_model=SearchResponse, dependencies=[Depends(limit_questions)]
+)
 def search(
     body: RetrievalRequest,
     session: Annotated[Session, Depends(get_session)],

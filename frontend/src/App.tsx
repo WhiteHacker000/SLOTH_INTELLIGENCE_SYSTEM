@@ -1,10 +1,12 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AskPanel } from "@/features/ask/AskPanel";
 import { DecisionExplorer } from "@/features/decisions/DecisionExplorer";
 import { ImportForm } from "@/features/repositories/ImportForm";
 import { RepositoryDashboard } from "@/features/repositories/RepositoryDashboard";
-import type { RepositoryDetail } from "@/types/api";
+import { AdminKeyForm } from "@/features/admin/AdminKeyForm";
+import { api } from "@/lib/api";
+import type { AdminStatus, RepositoryDetail } from "@/types/api";
 
 export default function App() {
   // The token lives only in memory and is sent with requests that need it.
@@ -12,6 +14,13 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [selected, setSelected] = useState<RepositoryDetail | null>(null);
   const askSection = useRef<HTMLElement>(null);
+  const [admin, setAdmin] = useState<AdminStatus | null>(null);
+  // Import, sync and extract show only when the server allows them.
+  const canManage = admin?.key_valid ?? false;
+
+  useEffect(() => {
+    api<AdminStatus>("/admin").then(setAdmin, () => setAdmin(null));
+  }, []);
 
   function select(repository: RepositoryDetail | null) {
     setSelected(repository);
@@ -29,21 +38,25 @@ export default function App() {
           Recover why an open-source project made its technical choices, with links
           to the original GitHub discussions.
         </p>
+        {admin?.key_required && !admin.key_valid && <AdminKeyForm onUnlocked={setAdmin} />}
       </header>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Import a repository</h2>
-        <ImportForm
-          token={token}
-          onTokenChange={setToken}
-          onRegistered={() => setRefreshKey((key) => key + 1)}
-        />
-      </section>
+      {canManage && (
+        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">Import a repository</h2>
+          <ImportForm
+            token={token}
+            onTokenChange={setToken}
+            onRegistered={() => setRefreshKey((key) => key + 1)}
+          />
+        </section>
+      )}
 
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Repositories</h2>
         <RepositoryDashboard
           token={token}
+          canManage={canManage}
           refreshKey={refreshKey}
           selectedId={selected?.id ?? null}
           onSelect={select}

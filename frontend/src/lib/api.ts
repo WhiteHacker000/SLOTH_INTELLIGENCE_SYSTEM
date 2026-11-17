@@ -14,12 +14,22 @@ function errorMessage(body: ErrorBody | null, status: number): string {
   return status >= 500 ? "The server had a problem. Try again." : "Request failed.";
 }
 
+// Kept in memory only, like the GitHub token, and sent with every request.
+let adminKey = "";
+
+export function setAdminKey(key: string) {
+  adminKey = key;
+}
+
 export async function api<T>(path: string, body?: unknown): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`/api/v1${path}`, {
       method: body === undefined ? "GET" : "POST",
-      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      headers: {
+        ...(body !== undefined && { "Content-Type": "application/json" }),
+        ...(adminKey && { "X-Admin-Key": adminKey }),
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {

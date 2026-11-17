@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.api.security import require_admin
 from app.db import crud
 from app.db.session import get_session
 from app.ingestion.github_client import (
@@ -49,7 +50,10 @@ def get_extraction_runner() -> ExtractionRunner:
 
 
 @router.post(
-    "", response_model=RepositoryRegistered, status_code=status.HTTP_201_CREATED
+    "",
+    dependencies=[Depends(require_admin)],
+    response_model=RepositoryRegistered,
+    status_code=status.HTTP_201_CREATED,
 )
 def register_repository(
     body: RepositoryCreate,
@@ -84,6 +88,7 @@ def get_repository(repository_id: UUID, session: SessionDep) -> RepositoryDetail
 
 @router.post(
     "/{repository_id}/sync",
+    dependencies=[Depends(require_admin)],
     response_model=SyncStarted,
     status_code=status.HTTP_202_ACCEPTED,
 )
@@ -110,6 +115,7 @@ def list_decisions(repository_id: UUID, session: SessionDep) -> list[DecisionRea
 
 @router.post(
     "/{repository_id}/extract",
+    dependencies=[Depends(require_admin)],
     response_model=ExtractionStarted,
     status_code=status.HTTP_202_ACCEPTED,
 )

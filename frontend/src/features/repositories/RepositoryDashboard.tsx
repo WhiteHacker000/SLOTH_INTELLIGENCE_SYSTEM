@@ -26,6 +26,7 @@ type Job = { kind: "sync" } | { kind: "extract"; decisionsBefore: number };
 
 interface Props {
   token: string;
+  canManage: boolean;
   refreshKey: number;
   selectedId: string | null;
   onSelect: (repository: RepositoryDetail | null) => void;
@@ -45,7 +46,7 @@ function finishedNote(job: Job, repo: RepositoryDetail): string | null {
   return `Extraction completed · ${repo.decision_count - job.decisionsBefore} new decisions`;
 }
 
-export function RepositoryDashboard({ token, refreshKey, selectedId, onSelect }: Props) {
+export function RepositoryDashboard({ token, canManage, refreshKey, selectedId, onSelect }: Props) {
   const [repositories, setRepositories] = useState<RepositoryDetail[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -139,22 +140,26 @@ export function RepositoryDashboard({ token, refreshKey, selectedId, onSelect }:
               </div>
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                disabled={syncing}
-                onClick={() => start(repo, { kind: "sync" }, `/repositories/${repo.id}/sync`, { token: token || undefined })}
-              >
-                Sync
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={repo.extracting}
-                onClick={() =>
-                  start(repo, { kind: "extract", decisionsBefore: repo.decision_count }, `/repositories/${repo.id}/extract`, {})
-                }
-              >
-                Extract decisions
-              </Button>
+              {canManage && (
+                <>
+                  <Button
+                    variant="secondary"
+                    disabled={syncing}
+                    onClick={() => start(repo, { kind: "sync" }, `/repositories/${repo.id}/sync`, { token: token || undefined })}
+                  >
+                    Sync
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={repo.extracting}
+                    onClick={() =>
+                      start(repo, { kind: "extract", decisionsBefore: repo.decision_count }, `/repositories/${repo.id}/extract`, {})
+                    }
+                  >
+                    Extract decisions
+                  </Button>
+                </>
+              )}
               <Button variant={selected ? "secondary" : "primary"} onClick={() => onSelect(selected ? null : repo)}>
                 {selected ? "Deselect" : "Select"}
               </Button>
