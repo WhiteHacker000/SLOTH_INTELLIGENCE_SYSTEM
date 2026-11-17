@@ -16,6 +16,7 @@
   - Check progress with `GET /api/v1/repositories/{id}`. Counts update while the sync runs, since progress is saved every 100 rows.
   - `sync_status` is one of `never_synced`, `running`, `paused`, `failed`, `synced`. `paused` means the rate limit ran out: `last_sync_error` asks for a token and the next sync continues from the last checkpoint.
 - `GET /api/v1/repositories/{id}/decisions` lists extracted decisions with `decision`, `rationale`, `alternatives` and `evidence` (quote plus GitHub link).
+  - `code` lists the files the decision touched: files changed by the PRs its evidence comes from, and lines that review comments used as evidence point at. Each has a GitHub link; lines link to the exact commit.
 - `POST /api/v1/repositories/{id}/extract` queues Gemma on the 15 most-discussed threads not processed yet, and returns `202` with how many threads it picked. Run it again for the next 15. Each thread takes about 15 seconds. While an extraction is queued or running it returns `threads: 0` and "Extraction is already running". If Ollama fails, the job is retried later and skips threads already done.
 - `POST /api/v1/search` returns the discussion chunks closest in meaning to a question.
   - Body: `{"query": "Why was X rejected?", "repository_full_name": "owner/name", "source_types": ["issue", "review"], "limit": 5}`. Only `query` is required; `limit` is 1 to 20.
@@ -28,6 +29,10 @@
   - If no result scores at least 0.65 similarity, it returns `insufficient_evidence` without calling the model.
   - Citations are checked against the retrieved results. An answer with no real citation becomes `insufficient_evidence`.
   - Errors: `404` unknown repository, `503` embeddings or Ollama not available.
+- `POST /api/v1/pr-context` finds past decisions about the files a pull request changes.
+  - Body: `{"repository_full_name": "owner/name", "files": ["src/cache.py"], "limit": 5}`. `files` takes 1 to 300 paths.
+  - A decision matches when it touched the same file (score 1 each) or a file in the same folder (0.3 each). Results are best first, with `matched_files` and the full decision.
+  - Errors: `404` unknown repository.
 - `GET /api/v1/admin` returns `key_required` and `key_valid` for the `X-Admin-Key` header sent, so the UI knows whether to show import and extract controls.
 - When `ADMIN_API_KEY` is set, registering, syncing and extracting need it in the `X-Admin-Key` header, else they return `401`.
 - Search and ask allow `QUESTIONS_PER_MINUTE` requests per client IP (default 10), then return `429` with a `Retry-After` header. Limits are kept in memory, so they reset on restart.

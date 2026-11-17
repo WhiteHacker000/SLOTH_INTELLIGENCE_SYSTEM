@@ -14,8 +14,9 @@ from app.generation.llm import (
     LanguageModelError,
     get_language_model,
 )
-from app.models import Comment, Decision, DecisionEvidence, Discussion
+from app.models import Comment, Decision, DecisionEvidence, Discussion, Repository
 from app.schemas.decisions import DecisionRead, EvidenceRead
+from app.services.code_links import code_for
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +24,14 @@ logger = logging.getLogger(__name__)
 THREADS_PER_RUN = 15
 
 
-def list_decisions(session: Session, repository_id: UUID) -> list[DecisionRead]:
-    decisions = list(
-        session.scalars(
-            select(Decision)
-            .where(Decision.repository_id == repository_id)
-            .order_by(Decision.created_at.desc())
-        )
-    )
+def list_decisions(
+    session: Session, repository: Repository, ids: list[UUID] | None = None
+) -> list[DecisionRead]:
+    query = select(Decision).where(Decision.repository_id == repository.id)
+    if ids is not None:
+        query = query.where(Decision.id.in_(ids))
+    decisions = list(session.scalars(query.order_by(Decision.created_at.desc())))
+    code = code_for(session, repository, [d.id for d in decisions])
     evidence: dict[UUID, list[EvidenceRead]] = defaultdict(list)
     for item in session.scalars(
         select(DecisionEvidence).where(
@@ -48,6 +49,7 @@ def list_decisions(session: Session, repository_id: UUID) -> list[DecisionRead]:
             rationale=d.rationale,
             alternatives=d.alternatives,
             evidence=evidence[d.id],
+            code=code.get(d.id, []),
         )
         for d in decisions
     ]

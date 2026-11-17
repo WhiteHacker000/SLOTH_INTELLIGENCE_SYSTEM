@@ -114,7 +114,7 @@ def sync_repository(
 
 @router.get("/{repository_id}/decisions", response_model=list[DecisionRead])
 def list_decisions(repository_id: UUID, session: SessionDep) -> list[DecisionRead]:
-    return decision_service.list_decisions(session, _find(session, repository_id).id)
+    return decision_service.list_decisions(session, _find(session, repository_id))
 
 
 @router.post(
