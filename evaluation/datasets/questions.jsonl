@@ -1,0 +1,35 @@
+{"repository": "pallets/itsdangerous", "question": "Why was the default signing hash moved off SHA-1, and why was that change rolled back?", "expected_threads": [77, 111, 112]}
+{"repository": "pallets/itsdangerous", "question": "Why are exp and iat kept in the JWS header rather than the payload?", "expected_threads": [73]}
+{"repository": "pallets/itsdangerous", "question": "Can compression make the URL safe serializer leak data like the CRIME attack?", "expected_threads": [26]}
+{"repository": "pallets/itsdangerous", "question": "Why do timestamp signatures made with 0.x fail after upgrading to 1.1?", "expected_threads": [120]}
+{"repository": "pallets/itsdangerous", "question": "How are time zones handled when TimestampSigner writes and reads its timestamp?", "expected_threads": [137]}
+{"repository": "pallets/itsdangerous", "question": "Can I rotate secrets by giving the signer more than one key?", "expected_threads": [141]}
+{"repository": "pallets/itsdangerous", "question": "Should the library read Django's SECRET_KEY automatically?", "expected_threads": [25]}
+{"repository": "pallets/itsdangerous", "question": "How does the project pin its development dependencies?", "expected_threads": [159]}
+{"repository": "pallets/itsdangerous", "question": "How were type annotations added and how is the Serializer typed?", "expected_threads": [186, 374, 376]}
+{"repository": "pallets/itsdangerous", "question": "Why was Python 2.6 no longer supported?", "expected_threads": [72]}
+{"repository": "pallets/itsdangerous", "question": "Is reversed() or slicing with [::-1] faster here?", "expected_threads": [13]}
+{"repository": "pallets/itsdangerous", "question": "Is there a JSON web signature serializer that expires?", "expected_threads": [19]}
+{"repository": "pallets-eco/blinker", "question": "Can a functools.partial object be used as a signal receiver?", "expected_threads": [19]}
+{"repository": "pallets-eco/blinker", "question": "Can signals call async receivers with asyncio?", "expected_threads": [17, 18, 76]}
+{"repository": "pallets-eco/blinker", "question": "In which order are receivers called when a signal fires?", "expected_threads": [34, 86]}
+{"repository": "pallets-eco/blinker", "question": "Is the lazy_property helper safe to use from several threads?", "expected_threads": [21]}
+{"repository": "pallets-eco/blinker", "question": "How can I temporarily turn a signal off?", "expected_threads": [84]}
+{"repository": "pallets-eco/blinker", "question": "How was sending made faster when nothing is connected?", "expected_threads": [35]}
+{"repository": "pallets-eco/blinker", "question": "Why did the tests move away from nose?", "expected_threads": [60]}
+{"repository": "pallets-eco/blinker", "question": "Can I choose my own Signal subclass for named signals?", "expected_threads": [23]}
+{"repository": "pallets-eco/blinker", "question": "Does blinker ship type hints, and which Python versions do they need?", "expected_threads": [43, 90]}
+{"repository": "pallets-eco/blinker", "question": "Why does tox say an interpreter was not found?", "expected_threads": [47]}
+{"repository": "pallets-eco/blinker", "question": "Was a send that keeps going when a receiver raises ever added?", "expected_threads": [27]}
+{"repository": "pallets/markupsafe", "question": "Should the C extension for speedups be removed?", "expected_threads": [433]}
+{"repository": "pallets/markupsafe", "question": "Was rewriting the speedups in Rust considered?", "expected_threads": [433, 438]}
+{"repository": "pallets/markupsafe", "question": "How do I install it without compiling the native speedups?", "expected_threads": [26]}
+{"repository": "pallets/markupsafe", "question": "Are prebuilt wheels published, and for which platforms?", "expected_threads": [45, 186]}
+{"repository": "pallets/markupsafe", "question": "Does it work on free-threaded Python builds?", "expected_threads": [462, 438]}
+{"repository": "pallets/markupsafe", "question": "Why was Python 3.8 dropped?", "expected_threads": [464]}
+{"repository": "pallets/markupsafe", "question": "When does the project stop supporting an old Python version?", "expected_threads": [538, 464]}
+{"repository": "pallets/markupsafe", "question": "Why did the project adopt GraphQL for its API?", "expected_threads": [], "answerable": false}
+{"repository": "pallets/itsdangerous", "question": "Why was the admin dashboard rewritten in Vue?", "expected_threads": [], "answerable": false}
+{"repository": "pallets-eco/blinker", "question": "How is the Kubernetes deployment configured?", "expected_threads": [], "answerable": false}
+{"repository": "pallets/itsdangerous", "question": "Why did the team choose MongoDB over PostgreSQL?", "expected_threads": [], "answerable": false}
+{"repository": "pallets/markupsafe", "question": "Why was the mobile app dropped from the roadmap?", "expected_threads": [], "answerable": false}
