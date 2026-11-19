@@ -5,7 +5,7 @@ from collections import deque
 from collections.abc import Callable
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, Request
+from fastapi import Depends, Header, HTTPException
 
 from app.core.config import Settings, get_settings
 
@@ -61,22 +61,3 @@ question_limiter = RateLimiter()
 
 def get_question_limiter() -> RateLimiter:
     return question_limiter
-
-
-def limit_questions(
-    request: Request,
-    settings: SettingsDep,
-    limiter: Annotated[RateLimiter, Depends(get_question_limiter)],
-) -> None:
-    """Cap how often one client can run search or the answer model."""
-    if settings.questions_per_minute <= 0:
-        return
-    client = request.client.host if request.client else "unknown"
-    wait = limiter.hit(client, settings.questions_per_minute)
-    if wait is not None:
-        seconds = max(1, round(wait))
-        raise HTTPException(
-            429,
-            f"Too many questions. Try again in {seconds} seconds.",
-            headers={"Retry-After": str(seconds)},
-        )

@@ -26,6 +26,17 @@ class Settings(BaseSettings):
     run_job_worker: bool = True
     # Per client IP, for search and ask. 0 turns the limit off.
     questions_per_minute: int = 10
+    # The same for each signed-in user.
+    signed_in_questions_per_minute: int = 30
+    # Fernet key that encrypts users' GitHub tokens. Sign-in is off without it.
+    token_encryption_key: SecretStr | None = None
+    # The SilS GitHub App, used to sign people in.
+    github_app_client_id: str | None = None
+    github_app_client_secret: SecretStr | None = None
+    # Where this API is reachable from browsers; GitHub returns users here.
+    public_url: str = "http://localhost:8000"
+    # Where people land after signing in. The same as public_url in production.
+    app_url: str = "http://localhost:5173"
 
     model_config = SettingsConfigDict(
         env_file=REPOSITORY_ROOT / ".env",

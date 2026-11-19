@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.lookups import embed_query, repository_id_for
-from app.api.security import limit_questions
+from app.auth.access import limit_questions
 from app.db.session import get_session
 from app.embeddings.embedder import Embedder, get_embedder
 from app.retrieval.search import THREAD_CANDIDATES, rank_threads, search_chunks
