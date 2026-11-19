@@ -9,6 +9,12 @@ from sqlalchemy.orm import Session
 
 from app.api.security import SettingsDep
 from app.auth import sessions
+from app.auth.access import (
+    SESSION_COOKIE,
+    CallerDep,
+    optional_cipher,
+    sign_in_configured,
+)
 from app.auth.crypto import TokenCipher
 from app.auth.github import GitHubSignIn, SignInFailed
 from app.core.config import Settings
@@ -17,7 +23,6 @@ from app.db.session import get_session
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-SESSION_COOKIE = "sils_session"
 STATE_COOKIE = "sils_sign_in_state"
 STATE_MAX_AGE = 600
 
@@ -32,14 +37,6 @@ class AuthStatus(BaseModel):
     user: SignedInUser | None
 
 
-def sign_in_configured(settings: Settings) -> bool:
-    return bool(
-        settings.github_app_client_id
-        and settings.github_app_client_secret
-        and settings.token_encryption_key
-    )
-
-
 def get_github_sign_in(settings: SettingsDep) -> GitHubSignIn:
     if not sign_in_configured(settings):
         raise HTTPException(503, "Sign-in is not set up on this server")
@@ -50,11 +47,6 @@ def get_github_sign_in(settings: SettingsDep) -> GitHubSignIn:
         f"{settings.public_url}/api/v1/auth/callback",
         settings.github_api_base_url,
     )
-
-
-def optional_cipher(settings: SettingsDep) -> TokenCipher | None:
-    key = settings.token_encryption_key
-    return TokenCipher(key.get_secret_value()) if key else None
 
 
 GitHubDep = Annotated[GitHubSignIn, Depends(get_github_sign_in)]
@@ -132,13 +124,8 @@ def logout(
 
 
 @router.get("/me", response_model=AuthStatus)
-def me(
-    settings: SettingsDep,
-    session: SessionDep,
-    cipher: CipherDep,
-    cookie: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None,
-) -> AuthStatus:
-    found = sessions.signed_in(session, cipher, cookie) if cookie and cipher else None
+def me(settings: SettingsDep, caller: CallerDep) -> AuthStatus:
+    found = caller.user
     user = found and SignedInUser(
         login=found.user.login, avatar_url=found.user.avatar_url
     )

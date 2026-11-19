@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     run_job_worker: bool = True
     # Per client IP, for search and ask. 0 turns the limit off.
     questions_per_minute: int = 10
+    # The same for each signed-in user.
+    signed_in_questions_per_minute: int = 30
     # Fernet key that encrypts users' GitHub tokens. Sign-in is off without it.
     token_encryption_key: SecretStr | None = None
     # The SilS GitHub App, used to sign people in.

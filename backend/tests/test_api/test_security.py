@@ -5,12 +5,8 @@ import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.security import (
-    RateLimiter,
-    get_question_limiter,
-    limit_questions,
-    require_admin,
-)
+from app.api.security import RateLimiter, get_question_limiter, require_admin
+from app.auth.access import Caller, get_caller, limit_questions
 from app.core.config import Settings, get_settings
 from app.main import app
 
@@ -50,6 +46,7 @@ def make_client(settings: Settings, limiter: RateLimiter | None = None) -> TestC
     test_app.dependency_overrides[get_settings] = lambda: settings
     fresh = limiter or RateLimiter()
     test_app.dependency_overrides[get_question_limiter] = lambda: fresh
+    test_app.dependency_overrides[get_caller] = lambda: Caller(None, admin=False)
     return TestClient(test_app)
 
 

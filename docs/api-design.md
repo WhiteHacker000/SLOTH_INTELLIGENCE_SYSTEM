@@ -9,6 +9,7 @@
   - The session is an HttpOnly, SameSite=Lax cookie (Secure when `PUBLIC_URL` is https) that lasts as long as the user's GitHub token, at most 8 hours.
   - `GET /api/v1/auth/me` returns `{"sign_in_enabled": true, "user": {"login": "...", "avatar_url": "..."}}`, with `user` null when signed out.
   - `POST /api/v1/auth/logout` ends the session and returns `204`.
+  - Once sign-in is set up, import, sync and extraction need a signed-in user or the admin key, and an unset `ADMIN_API_KEY` no longer leaves them open. Search and ask stay open: signed-in users are limited per account (`SIGNED_IN_QUESTIONS_PER_MINUTE`, default 30), everyone else per IP.
 - `POST /api/v1/repositories` registers a public GitHub repository.
   - Body: `{"url": "https://github.com/owner/name", "token": "optional"}`. `owner/name` also works.
   - Checks the repository exists, saves it, and returns an import estimate.
