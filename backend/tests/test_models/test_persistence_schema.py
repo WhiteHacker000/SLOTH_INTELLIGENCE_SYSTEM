@@ -14,6 +14,8 @@ def test_all_tables_are_registered() -> None:
         "decision_evidence",
         "jobs",
         "discussion_files",
+        "users",
+        "user_sessions",
     }
 
 
