@@ -14,6 +14,8 @@ from app.models.entities import (
     JobStatus,
     Repository,
     SyncStatus,
+    User,
+    UserSession,
 )
 
 __all__ = [
@@ -30,4 +32,6 @@ __all__ = [
     "JobStatus",
     "Repository",
     "SyncStatus",
+    "User",
+    "UserSession",
 ]
