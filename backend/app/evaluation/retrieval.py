@@ -87,7 +87,7 @@ def main() -> None:
     from app.embeddings.embedder import get_embedder
     from app.generation.answer import answer_from_evidence
     from app.generation.llm import get_language_model
-    from app.retrieval.search import search_chunks
+    from app.retrieval.search import THREAD_CANDIDATES, rank_threads, search_chunks
 
     parser = argparse.ArgumentParser()
     parser.add_argument("dataset", type=Path)
@@ -99,16 +99,20 @@ def main() -> None:
     embedder = get_embedder()
     with SessionLocal() as session:
 
-        def search(q: Question) -> list[RetrievedEvidence]:
+        def chunks(q: Question, limit: int) -> list[RetrievedEvidence]:
             return search_chunks(
                 session,
                 embedder.embed_query(q.question),
                 repository_id=repository_id_for(session, q.repository),
-                limit=max(args.k, 6),
+                limit=limit,
             )
 
-        def answer(q: Question, evidence: list[RetrievedEvidence]) -> AskResponse:
-            return answer_from_evidence(get_language_model(), q.question, evidence)
+        # Ranked like /search; answers use raw chunks as evidence, like /ask.
+        def search(q: Question) -> list[RetrievedEvidence]:
+            return rank_threads(chunks(q, THREAD_CANDIDATES), args.k)
+
+        def answer(q: Question, _: list[RetrievedEvidence]) -> AskResponse:
+            return answer_from_evidence(get_language_model(), q.question, chunks(q, 6))
 
         report = evaluate(
             load(args.dataset), search, answer if args.answers else None, args.k

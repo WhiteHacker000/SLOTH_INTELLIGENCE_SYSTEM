@@ -1,3 +1,4 @@
+from collections import defaultdict
 from uuid import UUID
 
 from sqlalchemy import select
@@ -13,6 +14,9 @@ from app.models import (
 )
 from app.schemas.github import DiscussionSourceType
 from app.schemas.retrieval import RetrievedEvidence
+
+# Chunks fetched before ranking threads, so most threads have two to compare.
+THREAD_CANDIDATES = 30
 
 
 def search_chunks(
@@ -67,3 +71,23 @@ def search_chunks(
             )
         )
     return results
+
+
+def rank_threads(
+    chunks: list[RetrievedEvidence], limit: int
+) -> list[RetrievedEvidence]:
+    """One result per thread: its best chunk, best thread first.
+
+    A thread scores the similarity of its best chunk plus its second best, so a
+    thread that discusses the question in several places beats one that only
+    mentions it once.
+    """
+    threads: dict[tuple[str, int], list[RetrievedEvidence]] = defaultdict(list)
+    for chunk in sorted(chunks, key=lambda c: c.similarity, reverse=True):
+        threads[(chunk.repository_full_name, chunk.discussion_number)].append(chunk)
+    ranked = sorted(
+        threads.values(),
+        key=lambda found: sum(c.similarity for c in found[:2]),
+        reverse=True,
+    )
+    return [found[0] for found in ranked[:limit]]

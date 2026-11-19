@@ -45,8 +45,18 @@ Every run saved with `--save` is in `results/history.jsonl`. `questions` is the 
 | 2026-11-17 | Baseline: vector search on raw comments | questions | 0.97 | 0.70 | 0.82 |
 | 2026-11-17 | Baseline: vector search on raw comments | heldout | 0.96 | 0.63 | 0.76 |
 | 2026-11-17 | Tried, not kept: fuse with PostgreSQL full-text search (RRF, k=60) | questions | 0.87 | 0.60 | 0.70 |
+| 2026-11-19 | Tried, not kept: cross-encoder reranker on the top 10 to 30 chunks | questions | 0.97 | 0.60–0.70 | 0.77–0.83 |
+| 2026-11-19 | Tried, not kept: boost threads by how well their extracted decisions match | heldout | 0.96 | 0.56 | 0.72 |
+| 2026-11-19 | Rank threads by best plus second-best chunk | questions | 0.90 | 0.80 | 0.84 |
+| 2026-11-19 | Rank threads by best plus second-best chunk | heldout | 0.96 | 0.74 | 0.83 |
 
 Full-text search made results worse, so it was not kept. Lowering its weight in the fusion did not recover the baseline, which suggests the vectors already find what keywords would: questions are full sentences, and OR-ing their words mostly adds noise. It may still help for exact identifier lookups, which these sets do not test.
+
+Rerankers (`ms-marco-MiniLM-L-6-v2` and `bge-reranker-base`) did not beat plain vector search and added 0.3 to 5 seconds per question on a laptop CPU.
+
+Boosting threads by their decisions looked perfect on the tuning set (hit@1 0.97), but a flat bonus for having any decision scored the same: all 42 expected threads there have a decision, because those questions were drafted from decisions. On the held-out set, where about a third do, it made results worse.
+
+Thread ranking groups the 30 closest chunks by thread and scores each thread by its best chunk's similarity plus its second best, so a thread that discusses the question in several places beats one that mentions it once. `/search` and this evaluation use it. `/ask` still takes the closest chunks as evidence, so an answer can quote several replies from one thread. On the tuning set hit@5 fell from 0.97 to 0.90 while hit@1 rose; on the held-out set hit@5 held and hit@1 rose by 3 questions out of 27.
 
 ## Improvements so far
 
@@ -56,6 +66,7 @@ Full-text search made results worse, so it was not kept. Lowering its weight in 
 | Pull request matching | By file path only: a PR touching new files found nothing | Also by meaning: a thread's own decision ranks first for its title 82% of the time, with 1.1% unrelated matches at the 0.70 threshold |
 | Long threads | Only the first ~9,000 characters were read, so the final comments, where decisions usually land, were lost | The opening post and the newest replies are kept. Not measured yet |
 | Keyword search | Vector search, hit@5 0.97 | Tried hybrid search, hit@5 0.87, so it was not kept |
+| Search ranking | Closest chunks, held-out hit@1 0.63, MRR 0.76 | Threads ranked by their two best chunks, held-out hit@1 0.74, MRR 0.83. A reranker and a decision boost were tried and not kept |
 
 ### Pull request matching threshold
 

@@ -129,3 +129,11 @@ def test_search_endpoint(db_session: Session) -> None:
     assert ok.json()["results"][0]["discussion_title"] == "Issue 1"
     assert unknown.status_code == 404
     assert missing.status_code == 503
+
+
+def test_search_endpoint_returns_each_thread_once(db_session: Session) -> None:
+    seed(db_session, "a/b", axis=1, with_comment=True)
+
+    response = search_api(db_session, FakeEmbedder(), {"query": "why"})
+
+    assert [r["content"] for r in response.json()["results"]] == ["Issue 1 body"]

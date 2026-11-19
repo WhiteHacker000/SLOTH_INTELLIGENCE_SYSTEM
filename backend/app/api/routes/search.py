@@ -7,7 +7,7 @@ from app.api.lookups import embed_query, repository_id_for
 from app.api.security import limit_questions
 from app.db.session import get_session
 from app.embeddings.embedder import Embedder, get_embedder
-from app.retrieval.search import search_chunks
+from app.retrieval.search import THREAD_CANDIDATES, rank_threads, search_chunks
 from app.schemas.retrieval import RetrievalRequest, SearchResponse
 
 router = APIRouter(tags=["search"])
@@ -22,11 +22,11 @@ def search(
     embedder: Annotated[Embedder, Depends(get_embedder)],
 ) -> SearchResponse:
     repository_id = repository_id_for(session, body.repository_full_name)
-    results = search_chunks(
+    chunks = search_chunks(
         session,
         embed_query(embedder, body.query),
         repository_id=repository_id,
         source_types=body.source_types,
-        limit=body.limit,
+        limit=THREAD_CANDIDATES,
     )
-    return SearchResponse(query=body.query, results=results)
+    return SearchResponse(query=body.query, results=rank_threads(chunks, body.limit))
