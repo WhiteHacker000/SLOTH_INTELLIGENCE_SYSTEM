@@ -25,6 +25,7 @@
 - `GET /api/v1/repositories/{id}/decisions` lists extracted decisions with `decision`, `rationale`, `alternatives` and `evidence` (quote plus GitHub link).
   - `code` lists the files the decision touched: files changed by the PRs its evidence comes from, and lines that review comments used as evidence point at. Each has a GitHub link; lines link to the exact commit.
 - `POST /api/v1/repositories/{id}/extract` queues Gemma on the 15 most-discussed threads not processed yet, and returns `202` with how many threads it picked. Run it again for the next 15. Each thread takes about 15 seconds. While an extraction is queued or running it returns `threads: 0` and "Extraction is already running". If Ollama fails, the job is retried later and skips threads already done.
+  - With sign-in on, only users who can push to the repository on GitHub can run it (`403` otherwise). GitHub is asked with the user's token, and the answer is kept for 5 minutes.
 - `POST /api/v1/search` returns the discussion chunks closest in meaning to a question.
   - Body: `{"query": "Why was X rejected?", "repository_full_name": "owner/name", "source_types": ["issue", "review"], "limit": 5}`. Only `query` is required; `limit` is 1 to 20.
   - Each result has its text, `similarity` (0 to 1), `source_url`, `source_type`, issue or PR number and title, author and time.

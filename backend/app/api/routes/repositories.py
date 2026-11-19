@@ -5,7 +5,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.auth.access import require_member
+from app.auth.access import MemberDep, require_member
+from app.auth.push_access import PushAccess, get_push_access
 from app.db import crud
 from app.db.session import get_session
 from app.ingestion.github_client import (
@@ -119,16 +120,25 @@ def list_decisions(repository_id: UUID, session: SessionDep) -> list[DecisionRea
 
 @router.post(
     "/{repository_id}/extract",
-    dependencies=[Depends(require_member)],
     response_model=ExtractionStarted,
     status_code=status.HTTP_202_ACCEPTED,
 )
 def extract_repository_decisions(
     repository_id: UUID,
     session: SessionDep,
+    caller: MemberDep,
+    push_access: Annotated[PushAccess, Depends(get_push_access)],
     run_extraction: Annotated[ExtractionRunner, Depends(get_extraction_runner)],
 ) -> ExtractionStarted:
     repository = _find(session, repository_id)
+    # Extraction runs Gemma for minutes, so only the repository's maintainers
+    # can start it.
+    if not caller.admin and not (
+        caller.user and push_access.can_push(caller.user, repository.full_name)
+    ):
+        raise HTTPException(
+            403, f"Only people who can push to {repository.full_name} can run this"
+        )
     if jobs.has_active(session, repository.id, JobKind.EXTRACT):
         return ExtractionStarted(
             repository_id=repository.id,
