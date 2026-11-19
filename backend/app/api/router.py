@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.routes.admin import router as admin_router
 from app.api.routes.ask import router as ask_router
+from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router as health_router
 from app.api.routes.pr_context import router as pr_context_router
 from app.api.routes.repositories import router as repositories_router
@@ -10,6 +11,7 @@ from app.api.routes.search import router as search_router
 api_router = APIRouter()
 api_router.include_router(health_router)
 api_router.include_router(admin_router)
+api_router.include_router(auth_router)
 api_router.include_router(repositories_router)
 api_router.include_router(search_router)
 api_router.include_router(ask_router)
