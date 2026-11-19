@@ -1,3 +1,5 @@
 {"date": "2026-11-17", "label": "Baseline: vector search on raw comments", "dataset": "questions", "questions": 30, "hit@5": 0.9666666666666667, "hit@1": 0.7, "mrr": 0.8166666666666667}
 {"date": "2026-11-17", "label": "Tried, not kept: fuse with PostgreSQL full-text search (RRF, k=60)", "dataset": "questions", "questions": 30, "hit@5": 0.8666666666666667, "hit@1": 0.6, "mrr": 0.701111111111111}
 {"date": "2026-11-17", "label": "Baseline: vector search on raw comments", "dataset": "heldout", "questions": 27, "hit@5": 0.9629629629629629, "hit@1": 0.6296296296296297, "mrr": 0.7635802469135803}
+{"date": "2026-11-19", "label": "Rank threads by best plus second-best chunk", "dataset": "questions", "questions": 30, "hit@5": 0.9, "hit@1": 0.8, "mrr": 0.8388888888888889}
+{"date": "2026-11-19", "label": "Rank threads by best plus second-best chunk", "dataset": "heldout", "questions": 27, "hit@5": 0.9629629629629629, "hit@1": 0.7407407407407407, "mrr": 0.8345679012345678}

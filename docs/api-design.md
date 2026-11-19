@@ -18,9 +18,10 @@
 - `GET /api/v1/repositories/{id}/decisions` lists extracted decisions with `decision`, `rationale`, `alternatives` and `evidence` (quote plus GitHub link).
   - `code` lists the files the decision touched: files changed by the PRs its evidence comes from, and lines that review comments used as evidence point at. Each has a GitHub link; lines link to the exact commit.
 - `POST /api/v1/repositories/{id}/extract` queues Gemma on the 15 most-discussed threads not processed yet, and returns `202` with how many threads it picked. Run it again for the next 15. Each thread takes about 15 seconds. While an extraction is queued or running it returns `threads: 0` and "Extraction is already running". If Ollama fails, the job is retried later and skips threads already done.
-- `POST /api/v1/search` returns the discussion chunks closest in meaning to a question.
+- `POST /api/v1/search` returns the threads closest in meaning to a question, best first, each shown by its closest chunk.
+  - A thread scores its closest chunk's similarity plus its second closest, so a thread that discusses the question in several places ranks above one that mentions it once.
   - Body: `{"query": "Why was X rejected?", "repository_full_name": "owner/name", "source_types": ["issue", "review"], "limit": 5}`. Only `query` is required; `limit` is 1 to 20.
-  - Each result has its text, `similarity` (0 to 1), `source_url`, `source_type`, issue or PR number and title, author and time.
+  - Each result has its text, `similarity` (0 to 1, of that chunk), `source_url`, `source_type`, issue or PR number and title, author and time.
   - Errors: `404` unknown repository, `503` embeddings not installed on the server.
   - Search is exact (no vector index yet), which is fast enough for tens of thousands of chunks. Similarity alone does not mean the evidence answers the question.
 - `POST /api/v1/ask` answers a question from imported discussions.
