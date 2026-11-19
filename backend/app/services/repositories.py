@@ -26,14 +26,26 @@ logger = logging.getLogger(__name__)
 UNEXPECTED_SYNC_ERROR = "Sync failed unexpectedly. Saved progress was kept."
 
 
+class RepositoryTooLarge(Exception):
+    pass
+
+
 def register_repository(
-    session: Session, github: GitHubReader, full_name: str
+    session: Session,
+    github: GitHubReader,
+    full_name: str,
+    max_items: int | None = None,
 ) -> tuple[Repository, ImportEstimateRead]:
-    """Check the repository exists on GitHub, save it, and estimate the import."""
+    """Check the repository exists on GitHub, save it, and estimate the import.
+
+    A new repository with more than `max_items` issues and PRs is refused.
+    """
     meta = github.get_json(f"/repos/{full_name}")
     estimate = ImportEstimateRead(**asdict(estimate_import(github, meta["full_name"])))
 
     repository = crud.get_repository_by_full_name(session, meta["full_name"])
+    if repository is None and max_items is not None and estimate.items > max_items:
+        raise RepositoryTooLarge(estimate.items)
     if repository is None:
         repository = crud.create_repository(
             session,

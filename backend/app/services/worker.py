@@ -32,9 +32,12 @@ def _extract(job: Job, _: str | None) -> None:
 HANDLERS: dict[JobKind, Handler] = {JobKind.SYNC: _sync, JobKind.EXTRACT: _extract}
 
 
-def queue_sync(repository_id: UUID, token: str | None) -> None:
+def queue_sync(
+    repository_id: UUID, token: str | None, user_id: UUID | None = None
+) -> None:
+    payload = {"user_id": str(user_id)} if user_id else None
     with SessionLocal() as session:
-        jobs.enqueue(session, JobKind.SYNC, repository_id, token=token)
+        jobs.enqueue(session, JobKind.SYNC, repository_id, payload, token)
         session.commit()
 
 

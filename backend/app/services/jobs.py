@@ -49,6 +49,19 @@ def has_active(session: Session, repository_id: UUID, kind: JobKind) -> bool:
     )
 
 
+def syncs_started_by(session: Session, user_id: UUID, since: datetime) -> list[Job]:
+    """Syncs a user queued since a time, for per-user limits."""
+    return list(
+        session.scalars(
+            select(Job).where(
+                Job.kind == JobKind.SYNC,
+                Job.payload["user_id"].astext == str(user_id),
+                Job.created_at >= since,
+            )
+        )
+    )
+
+
 def claim_next(session: Session, kind: JobKind) -> Job | None:
     """Take the oldest due job of this kind, skipping rows another worker holds."""
     job = session.scalars(

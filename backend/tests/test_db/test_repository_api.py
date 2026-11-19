@@ -54,7 +54,7 @@ def api(db_session: Session) -> Generator[dict[str, Any], None, None]:
     app.dependency_overrides[get_session] = lambda: db_session
     app.dependency_overrides[get_github_factory] = lambda: factory
     app.dependency_overrides[get_sync_runner] = lambda: (
-        lambda repo_id, token: state["syncs"].append((repo_id, token))
+        lambda repo_id, token, user_id: state["syncs"].append((repo_id, token))
     )
     state["client"] = TestClient(app)
     yield state

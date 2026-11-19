@@ -1,11 +1,12 @@
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.auth.access import MemberDep, require_member
+from app.auth.access import Caller, MemberDep
 from app.auth.push_access import PushAccess, get_push_access
 from app.db import crud
 from app.db.session import get_session
@@ -36,10 +37,13 @@ from app.services import (
 router = APIRouter(prefix="/repositories", tags=["repositories"])
 
 RATE_LIMIT_MESSAGE = "GitHub rate limit reached. Add your GitHub token to continue."
+# Bigger repositories need a maintainer to install SilS on them.
+MAX_IMPORT_THREADS = 5_000
+SYNCS_PER_DAY = 20
 
 SessionDep = Annotated[Session, Depends(get_session)]
 GitHubFactory = Callable[[str | None], GitHubClient]
-SyncRunner = Callable[[UUID, str | None], None]
+SyncRunner = Callable[[UUID, str | None, UUID | None], None]
 ExtractionRunner = Callable[[UUID, list[UUID]], None]
 
 
@@ -56,21 +60,26 @@ def get_extraction_runner() -> ExtractionRunner:
 
 
 @router.post(
-    "",
-    dependencies=[Depends(require_member)],
-    response_model=RepositoryRegistered,
-    status_code=status.HTTP_201_CREATED,
+    "", response_model=RepositoryRegistered, status_code=status.HTTP_201_CREATED
 )
 def register_repository(
     body: RepositoryCreate,
     session: SessionDep,
+    caller: MemberDep,
     github_factory: Annotated[GitHubFactory, Depends(get_github_factory)],
 ) -> RepositoryRegistered:
+    max_items = None if caller.admin else MAX_IMPORT_THREADS
     try:
-        with github_factory(body.token_value()) as github:
+        with github_factory(body.token_value() or _user_token(caller)) as github:
             repository, estimate = service.register_repository(
-                session, github, body.full_name
+                session, github, body.full_name, max_items
             )
+    except service.RepositoryTooLarge as error:
+        raise HTTPException(
+            403,
+            f"This repository has over {MAX_IMPORT_THREADS:,} issues and pull "
+            "requests. A maintainer can install SilS on it to import it.",
+        ) from error
     except RepositoryNotFound as error:
         raise HTTPException(404, "Repository not found on GitHub") from error
     except RateLimitExceeded as error:
@@ -94,22 +103,25 @@ def get_repository(repository_id: UUID, session: SessionDep) -> RepositoryDetail
 
 @router.post(
     "/{repository_id}/sync",
-    dependencies=[Depends(require_member)],
     response_model=SyncStarted,
     status_code=status.HTTP_202_ACCEPTED,
 )
 def sync_repository(
     repository_id: UUID,
     session: SessionDep,
+    caller: MemberDep,
     run_sync: Annotated[SyncRunner, Depends(get_sync_runner)],
     body: TokenRequest | None = None,
 ) -> SyncStarted:
     repository = _find(session, repository_id)
-    token = body.token_value() if body else None
+    user_id = caller.user.user.id if caller.user else None
+    if user_id and not caller.admin:
+        _check_sync_limits(session, user_id)
+    token = (body.token_value() if body else None) or _user_token(caller)
     # Show "running" straight away instead of after the background task starts.
     repository.sync_status = SyncStatus.RUNNING
     session.commit()
-    run_sync(repository.id, token)
+    run_sync(repository.id, token, user_id)
     return SyncStarted(repository_id=repository.id, message="Sync started")
 
 
@@ -152,6 +164,24 @@ def extract_repository_decisions(
     return ExtractionStarted(
         repository_id=repository.id, threads=len(threads), message=message
     )
+
+
+def _user_token(caller: Caller) -> str | None:
+    return caller.user.github_token if caller.user else None
+
+
+def _check_sync_limits(session: Session, user_id: UUID) -> None:
+    started = jobs.syncs_started_by(
+        session, user_id, datetime.now(UTC) - timedelta(days=1)
+    )
+    if any(job.status in jobs.ACTIVE for job in started):
+        raise HTTPException(
+            429, "Your last import is still running. Try again after it finishes."
+        )
+    if len(started) >= SYNCS_PER_DAY:
+        raise HTTPException(
+            429, f"You can start {SYNCS_PER_DAY} imports a day. Try again tomorrow."
+        )
 
 
 def _find(session: Session, repository_id: UUID) -> Repository:

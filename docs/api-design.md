@@ -16,9 +16,11 @@
   - When the repository is too large for anonymous access, `estimate.token_recommended` is true and `estimate.message` says to add a GitHub token, for the frontend to show as a small notice.
   - Registering the same repository again returns the existing record.
   - Errors: `422` invalid URL, `404` not on GitHub, `429` rate limit reached, `502` GitHub unavailable.
+  - With sign-in on, GitHub is called with the signed-in user's token, so imports use their own rate limit. A new repository with over 5,000 issues and PRs is refused with `403` unless the admin key is used.
 - `GET /api/v1/repositories` lists registered repositories with their last sync time and error.
 - `GET /api/v1/repositories/{id}` returns one repository with its discussion, comment and decision counts, and `extracting` (true while an extraction runs).
 - `POST /api/v1/repositories/{id}/sync` queues an import for the background worker and returns `202` straight away. A second request while one is queued or running adds nothing.
+  - With sign-in on, each user can have one import running and start 20 a day (`429` otherwise).
   - Body (optional): `{"token": "..."}`. The token is used for this sync only and is not stored or logged. Without it, `GITHUB_TOKEN` from `.env` is used, else the import runs anonymously.
   - Check progress with `GET /api/v1/repositories/{id}`. Counts update while the sync runs, since progress is saved every 100 rows.
   - `sync_status` is one of `never_synced`, `running`, `paused`, `failed`, `synced`. `paused` means the rate limit ran out: `last_sync_error` asks for a token and the next sync continues from the last checkpoint.
