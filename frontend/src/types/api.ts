@@ -66,3 +66,13 @@ export interface AdminStatus {
   key_required: boolean;
   key_valid: boolean;
 }
+
+export interface SignedInUser {
+  login: string;
+  avatar_url: string | null;
+}
+
+export interface AuthStatus {
+  sign_in_enabled: boolean;
+  user: SignedInUser | null;
+}

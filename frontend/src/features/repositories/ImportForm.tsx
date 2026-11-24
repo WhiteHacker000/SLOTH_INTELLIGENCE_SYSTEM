@@ -7,11 +7,12 @@ import type { RepositoryRegistered } from "@/types/api";
 
 interface Props {
   token: string;
+  showToken?: boolean;
   onTokenChange: (token: string) => void;
   onRegistered: (result: RepositoryRegistered) => void;
 }
 
-export function ImportForm({ token, onTokenChange, onRegistered }: Props) {
+export function ImportForm({ token, showToken = true, onTokenChange, onRegistered }: Props) {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,19 +53,21 @@ export function ImportForm({ token, onTokenChange, onRegistered }: Props) {
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
         </label>
-        <label className="sm:w-64">
-          <span className="mb-1 block text-sm font-medium text-slate-700">
-            GitHub token (optional)
-          </span>
-          <input
-            type="password"
-            autoComplete="off"
-            value={token}
-            onChange={(event) => onTokenChange(event.target.value)}
-            placeholder="Only kept in this tab"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-          />
-        </label>
+        {showToken && (
+          <label className="sm:w-64">
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              GitHub token (optional)
+            </span>
+            <input
+              type="password"
+              autoComplete="off"
+              value={token}
+              onChange={(event) => onTokenChange(event.target.value)}
+              placeholder="Only kept in this tab"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+          </label>
+        )}
       </div>
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={loading}>

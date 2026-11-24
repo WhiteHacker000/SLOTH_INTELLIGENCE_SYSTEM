@@ -5,8 +5,11 @@ import { DecisionExplorer } from "@/features/decisions/DecisionExplorer";
 import { ImportForm } from "@/features/repositories/ImportForm";
 import { RepositoryDashboard } from "@/features/repositories/RepositoryDashboard";
 import { AdminKeyForm } from "@/features/admin/AdminKeyForm";
+import { SignInMenu } from "@/features/auth/SignInMenu";
 import { api } from "@/lib/api";
-import type { AdminStatus, RepositoryDetail } from "@/types/api";
+import type { AdminStatus, AuthStatus, RepositoryDetail } from "@/types/api";
+
+const signedOut: AuthStatus = { sign_in_enabled: false, user: null };
 
 export default function App() {
   // The token lives only in memory and is sent with requests that need it.
@@ -15,11 +18,17 @@ export default function App() {
   const [selected, setSelected] = useState<RepositoryDetail | null>(null);
   const askSection = useRef<HTMLElement>(null);
   const [admin, setAdmin] = useState<AdminStatus | null>(null);
-  // Import, sync and extract show only when the server allows them.
-  const canManage = admin?.key_valid ?? false;
+  const [auth, setAuth] = useState<AuthStatus>(signedOut);
+  const adminUnlocked = (admin?.key_required && admin.key_valid) ?? false;
+  // With sign-in on, members manage repos and the server checks each action.
+  // Without it, the admin key decides, as before.
+  const canManage = auth.sign_in_enabled
+    ? auth.user !== null || adminUnlocked
+    : (admin?.key_valid ?? false);
 
   useEffect(() => {
     api<AdminStatus>("/admin").then(setAdmin, () => setAdmin(null));
+    api<AuthStatus>("/auth/me").then(setAuth, () => setAuth(signedOut));
   }, []);
 
   function select(repository: RepositoryDetail | null) {
@@ -31,14 +40,17 @@ export default function App() {
   return (
     <main className="mx-auto w-full max-w-5xl space-y-8 px-6 py-10">
       <header>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-950">
-          Decision Intelligence
-        </h1>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-950">
+            Decision Intelligence
+          </h1>
+          <SignInMenu auth={auth} onSignedOut={() => setAuth({ ...auth, user: null })} />
+        </div>
         <p className="mt-2 text-slate-600">
           Recover why an open-source project made its technical choices, with links
           to the original GitHub discussions.
         </p>
-        {admin?.key_required && !admin.key_valid && <AdminKeyForm onUnlocked={setAdmin} />}
+        {!auth.sign_in_enabled && admin?.key_required && !admin.key_valid && <AdminKeyForm onUnlocked={setAdmin} />}
       </header>
 
       {canManage && (
@@ -46,6 +58,8 @@ export default function App() {
           <h2 className="mb-4 text-lg font-semibold text-slate-900">Import a repository</h2>
           <ImportForm
             token={token}
+            // Signed-in users import with their own GitHub token.
+            showToken={!auth.user}
             onTokenChange={setToken}
             onRegistered={() => setRefreshKey((key) => key + 1)}
           />

@@ -50,6 +50,8 @@ export function RepositoryDashboard({ token, canManage, refreshKey, selectedId, 
   const [repositories, setRepositories] = useState<RepositoryDetail[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  // Refusals such as "only maintainers can extract" or a daily limit.
+  const [refusals, setRefusals] = useState<Record<string, string>>({});
   // Jobs started from this page, so we can say when each one finishes.
   const jobs = useRef<Record<string, Job>>({});
 
@@ -83,6 +85,7 @@ export function RepositoryDashboard({ token, canManage, refreshKey, selectedId, 
 
   async function start(repo: RepositoryDetail, job: Job, path: string, body: unknown) {
     setNotes((old) => ({ ...old, [repo.id]: "" }));
+    setRefusals((old) => ({ ...old, [repo.id]: "" }));
     try {
       const reply = await api<StartedJob & { threads?: number }>(path, body);
       if (reply.threads === 0) {
@@ -92,7 +95,7 @@ export function RepositoryDashboard({ token, canManage, refreshKey, selectedId, 
       }
       refresh();
     } catch (err) {
-      setNotes((old) => ({ ...old, [repo.id]: err instanceof Error ? err.message : "Could not start." }));
+      setRefusals((old) => ({ ...old, [repo.id]: err instanceof Error ? err.message : "Could not start." }));
     }
   }
 
@@ -138,6 +141,7 @@ export function RepositoryDashboard({ token, canManage, refreshKey, selectedId, 
                   <span className="text-green-700">{notes[repo.id]}</span>
                 )}
               </div>
+              {refusals[repo.id] && <p className="mt-1 text-sm text-red-700">{refusals[repo.id]}</p>}
             </div>
             <div className="flex gap-2">
               {canManage && (

@@ -33,6 +33,7 @@ let routes: Record<string, unknown>;
 
 const openRoutes: Record<string, unknown> = {
   "/admin": { key_required: false, key_valid: true },
+  "/auth/me": { sign_in_enabled: false, user: null },
   "/repositories": [repo],
   "/repositories/r1": repo,
   "/repositories/r1/decisions": [decision],
@@ -50,6 +51,10 @@ beforeEach(() => {
       const path = String(input).replace("/api/v1", "");
       const key = new Headers(init?.headers).get("X-Admin-Key");
       const body = path === "/admin" && key === "secret" ? { key_required: true, key_valid: true } : routes[path];
+      if (path === "/auth/logout") return new Response(null, { status: 204 });
+      if (path === "/repositories/r1/extract") {
+        return new Response(JSON.stringify({ detail: "Only maintainers can extract." }), { status: 403 });
+      }
       return new Response(JSON.stringify(body), { status: 200 });
     }),
   );
@@ -100,5 +105,34 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Unlock" }));
     expect(await screen.findByText("Import a repository")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Unlock" })).not.toBeInTheDocument();
+  });
+
+  it("offers sign-in and keeps import hidden for visitors", async () => {
+    routes = { ...openRoutes, "/auth/me": { sign_in_enabled: true, user: null } };
+    render(<App />);
+
+    const link = await screen.findByRole("link", { name: "Sign in with GitHub" });
+    expect(link).toHaveAttribute("href", "/api/v1/auth/login");
+    expect(screen.queryByText("Import a repository")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Admin key", { selector: "input" })).not.toBeInTheDocument();
+  });
+
+  it("lets a signed-in user import with their own token and sign out", async () => {
+    routes = {
+      ...openRoutes,
+      "/auth/me": { sign_in_enabled: true, user: { login: "octo", avatar_url: null } },
+    };
+    render(<App />);
+
+    expect(await screen.findByText("Import a repository")).toBeInTheDocument();
+    expect(screen.getByText("octo")).toBeInTheDocument();
+    expect(screen.queryByText("GitHub token (optional)")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Extract decisions" }));
+    expect(await screen.findByText("Only maintainers can extract.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(await screen.findByRole("link", { name: "Sign in with GitHub" })).toBeInTheDocument();
+    expect(screen.queryByText("Import a repository")).not.toBeInTheDocument();
   });
 });
