@@ -41,7 +41,7 @@ flowchart LR
 
 The backend is one FastAPI app split into modules (ingestion, processing, embeddings, extraction, retrieval, generation). PostgreSQL with pgvector holds both the data and the vectors, so there is no separate vector database. Both models run locally and no data leaves the machine.
 
-More detail: [architecture](docs/architecture.md), [AI pipeline](docs/ai-pipeline.md), [API](docs/api-design.md), [database schema](docs/database-schema.md).
+More detail: [architecture](docs/architecture.md), [AI pipeline](docs/ai-pipeline.md), [API](docs/api-design.md), [database schema](docs/database-schema.md), [sign-in decision](docs/decisions/0001-github-sign-in.md).
 
 ## Technology
 

@@ -32,6 +32,9 @@ git clone https://github.com/WhiteHacker000/SLOTH_INTELLIGENCE_SYSTEM.git /opt/d
 cd /opt/decision-intelligence
 cp .env.example .env   # set DATABASE_URL with $DB_PASSWORD; GITHUB_TOKEN is optional
 echo "ADMIN_API_KEY=$(openssl rand -hex 24)" >> .env   # keep this key to manage repositories
+# For GitHub sign-in, also set GITHUB_APP_CLIENT_ID, GITHUB_APP_CLIENT_SECRET,
+# PUBLIC_URL and APP_URL (both https://your-domain.example), then:
+echo "TOKEN_ENCRYPTION_KEY=$(python3 -c 'import base64,os;print(base64.urlsafe_b64encode(os.urandom(32)).decode())')" >> .env
 
 cd backend
 python3 -m venv .venv
@@ -81,3 +84,5 @@ systemctl restart decision-intelligence
 ## Before sharing the URL
 
 With `ADMIN_API_KEY` set, visitors can browse decisions and ask questions, but importing, syncing and extracting need the key. Enter it in the admin key field on the page. Each visitor IP can ask `QUESTIONS_PER_MINUTE` questions a minute. Import and extract the repositories you want to show before sharing the URL, since extraction takes a few minutes.
+
+With sign-in set up, visitors sign in with GitHub to import and sync, and only people who can push to a repository can extract it. Set the GitHub App's callback URL to `https://your-domain.example/api/v1/auth/callback`. See the [sign-in decision record](decisions/0001-github-sign-in.md) and the checklist in [SECURITY.md](../SECURITY.md).
