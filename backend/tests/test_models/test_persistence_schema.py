@@ -16,6 +16,7 @@ def test_all_tables_are_registered() -> None:
         "discussion_files",
         "users",
         "user_sessions",
+        "webhook_deliveries",
     }
 
 

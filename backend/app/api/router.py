@@ -7,6 +7,7 @@ from app.api.routes.health import router as health_router
 from app.api.routes.pr_context import router as pr_context_router
 from app.api.routes.repositories import router as repositories_router
 from app.api.routes.search import router as search_router
+from app.api.routes.webhooks import router as webhooks_router
 
 api_router = APIRouter()
 api_router.include_router(health_router)
@@ -16,3 +17,4 @@ api_router.include_router(repositories_router)
 api_router.include_router(search_router)
 api_router.include_router(ask_router)
 api_router.include_router(pr_context_router)
+api_router.include_router(webhooks_router)

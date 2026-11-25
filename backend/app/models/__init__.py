@@ -16,6 +16,7 @@ from app.models.entities import (
     SyncStatus,
     User,
     UserSession,
+    WebhookDelivery,
 )
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "SyncStatus",
     "User",
     "UserSession",
+    "WebhookDelivery",
 ]

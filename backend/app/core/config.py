@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     # The SilS GitHub App, used to sign people in.
     github_app_client_id: str | None = None
     github_app_client_secret: SecretStr | None = None
+    # Shared with GitHub to sign webhook deliveries. Webhooks are off without it.
+    github_webhook_secret: SecretStr | None = None
     # Where this API is reachable from browsers; GitHub returns users here.
     public_url: str = "http://localhost:8000"
     # Where people land after signing in. The same as public_url in production.

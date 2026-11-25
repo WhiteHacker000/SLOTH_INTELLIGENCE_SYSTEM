@@ -291,3 +291,15 @@ class UserSession(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utc_now
     )
+
+
+class WebhookDelivery(Base):
+    """A GitHub webhook delivery already handled, so a redelivery is skipped."""
+
+    __tablename__ = "webhook_deliveries"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    event: Mapped[str] = mapped_column(String(64))
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now
+    )
