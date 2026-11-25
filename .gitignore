@@ -22,3 +22,11 @@ coverage/
 .DS_Store
 .idea/
 .vscode/
+
+# Notes and tool folders kept on our machines only
+HACKATHON.md
+git_flow.md
+implementation_plan.md
+sloth_intelligence_integration.md
+.impeccable/
+.claude/
